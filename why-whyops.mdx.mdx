@@ -1,0 +1,242 @@
+---
+title: "Why WhyOps?"
+description: "Understanding the fundamental problem with agent debugging"
+---
+
+# Why WhyOps Exists
+
+## The Agent Debugging Crisis
+
+When agents fail in production, developers face an impossible task: **debugging non-deterministic, iterative, tool-using systems with deterministic debugging tools**.
+
+### The Questions You Can't Answer Today
+
+When your agent behaves unexpectedly, you need to know:
+
+<AccordionGroup>
+  <Accordion title="Why did it call this specific tool?" icon="wrench">
+    Traditional logs show the tool was called, but not why it was chosen over alternatives or what context led to that decision.
+  </Accordion>
+  
+  <Accordion title="Why did it retry 4 times?" icon="rotate">
+    Framework retries happen silently. The LLM never sees the failures, and neither do your logs.
+  </Accordion>
+  
+  <Accordion title="Why did it ignore the right document?" icon="file-xmark">
+    Memory retrieval found 20 documents, but only 4 made it to the prompt. What happened to the others?
+  </Accordion>
+  
+  <Accordion title="Why did it stop execution early?" icon="circle-stop">
+    Did the LLM decide to finish, or did the framework hit a limit? This distinction is invisible in standard logs.
+  </Accordion>
+  
+  <Accordion title="Why did it hallucinate despite having correct data?" icon="book">
+    The data was retrieved but never made it to the LLM, or was transformed/sanitized along the way.
+  </Accordion>
+</AccordionGroup>
+
+## The Root Cause
+
+<Note>
+**Traditional observability tools were built for deterministic software. Agent systems are fundamentally different.**
+</Note>
+
+### Characteristics of Agent Systems
+
+| Agent Property | Traditional Software | Impact on Debugging |
+|---------------|---------------------|---------------------|
+| **Non-deterministic** | Deterministic | Same input ≠ same output |
+| **Iterative** | Request-response | Multi-step execution loops |
+| **Tool-using** | API calls | External actions with side effects |
+| **Memory-influenced** | Stateless | Past context affects decisions |
+| **Planner-driven** | Fixed flow | Dynamic strategy adjustment |
+
+Current tools show **LLM calls**, not **agent cognition**.
+
+## What's Missing: Two Layers of Reality
+
+<Warning>
+**Critical Insight:** If it influenced the answer, it must be in the prompt.
+
+This is only true for **LLM reasoning**, not **agent decision-making**.
+</Warning>
+
+### Two Types of Cognition
+
+```
+┌─────────────────────────────────────────┐
+│ LLM Cognition (Visible to Proxy)       │
+│ - Prompt analysis                        │
+│ - Token inspection                       │
+│ - Model reasoning                        │
+└─────────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────────┐
+│ Runtime Cognition (Invisible to Proxy)  │
+│ - Tool retries                           │
+│ - Memory filtering                       │
+│ - Framework termination                  │
+│ - Planner state evolution                │
+└─────────────────────────────────────────┘
+```
+
+Agent behavior is shaped by **runtime state not visible to the LLM**.
+
+## Real-World Failure Scenarios
+
+### Scenario 1: The Silent Tool Retry
+
+```
+Flow:
+1. LLM → call search_web("climate policy")
+2. Tool timeout (5000ms)
+3. Framework retries (attempt 2) - fails
+4. Framework retries (attempt 3) - succeeds
+5. LLM receives result
+
+What You See:
+- Tool call: search_web
+- Result: [search results]
+- Latency: 15 seconds (?!)
+
+What Actually Happened:
+- 3 attempts
+- 2 failures
+- Network issues
+- Why so slow? Retries!
+```
+
+<Card title="Impact" icon="triangle-exclamation">
+  You log the cleaned version, not the real error. Hours of debugging ensue.
+</Card>
+
+### Scenario 2: Memory Mutation Outside LLM
+
+```python
+# This never goes through the LLM
+memory.store({
+    "user_preference": "concise responses",
+    "interaction_count": 47,
+    "last_topic": "climate policy"
+})
+
+# But this influences the next decision
+memory.retrieve(query="relevant context")
+# Returns context shaped by stored preferences
+```
+
+<Card title="Impact" icon="triangle-exclamation">
+  Decision reasoning gap - you see output but not what shaped it.
+</Card>
+
+### Scenario 3: Framework Stops Agent Loop
+
+```python
+# Agent is in the middle of execution
+# Framework hits max_iterations=5
+
+# LLM's last response: tool_call("synthesize_results")
+# But framework terminates before LLM sees result
+
+# In logs: Looks like LLM decided to stop
+# Reality: Framework killed the loop
+```
+
+<Card title="Impact" icon="triangle-exclamation">
+  Proxy-only logging makes it look like the task completed naturally.
+</Card>
+
+### Scenario 4: RAG Mechanics Hidden
+
+```
+What Actually Happens:
+1. User query: "Best climate policies?"
+2. System rewrites → "climate policy economic impact"
+3. Searches 500 embeddings
+4. Finds 20 documents
+5. Filters to top 4 (threshold > 0.78)
+6. Summarizes those 4
+7. Injects summary into prompt
+
+What Proxy Sees:
+"Here is relevant context: [summary]"
+
+What's Missing:
+- Query rewriting logic
+- Similarity scores
+- Rejected documents  
+- Cutoff thresholds
+- Ranking decisions
+```
+
+<Card title="Impact" icon="triangle-exclamation">
+  You see retrieval output, not retrieval cognition. Two runs may inject similar text but came from totally different retrieval reasoning.
+</Card>
+
+## Why Existing Tools Fall Short
+
+<CardGroup cols={2}>
+  <Card title="LangSmith" icon="link">
+    **Focus:** Prompt debugging and tracing
+    
+    **Missing:** Runtime state, tool retries, memory influence
+  </Card>
+  
+  <Card title="LangFuse" icon="chart-line">
+    **Focus:** LLM observability and analytics
+    
+    **Missing:** Agent cognition, decision causality
+  </Card>
+  
+  <Card title="Helicone" icon="tower-cell">
+    **Focus:** API monitoring and caching
+    
+    **Missing:** Agent-specific context and state
+  </Card>
+  
+  <Card title="Datadog APM" icon="chart-mixed">
+    **Focus:** Service monitoring
+    
+    **Missing:** Cognitive trace, decision reconstruction
+  </Card>
+</CardGroup>
+
+## The WhyOps Difference
+
+<Tip>
+WhyOps captures the **four cognitive boundaries** that define agent behavior:
+</Tip>
+
+| Boundary | What It Captures | Why It Matters |
+|----------|------------------|----------------|
+| **Planner Step** | Agent decides next action | Shows why strategy changed |
+| **Memory Retrieval** | Past info influences decision | Maps context to decisions |
+| **LLM Reasoning** | Model generates thoughts/actions | Standard observability |
+| **Tool Execution** | External world interaction | Reveals hidden failures |
+
+These four boundaries = **complete agent cognition loop**.
+
+## The Category Insight
+
+<Note>
+Most people say: "Agents are unreliable"
+
+WhyOps reframes it: **"Agents are un-debuggable because decision state is invisible"**
+</Note>
+
+This is a **category insight**, not just a feature. It represents a fundamental shift in how we think about agent infrastructure.
+
+## What This Enables
+
+With WhyOps, you can:
+
+1. **Debug in minutes, not hours** - See exactly why decisions were made
+2. **Reproduce production failures** - Replay exact cognitive state
+3. **Build reliable agents** - Understand patterns in agent behavior
+4. **Audit AI decisions** - Track decision lineage for compliance
+
+---
+
+<Info>
+**Next:** Learn about the [Core Concepts](/core-concepts) that make WhyOps possible.
+</Info>
