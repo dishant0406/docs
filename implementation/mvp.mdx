@@ -3,15 +3,28 @@ title: MVP Scope
 description: The smallest demo that proves the category.
 ---
 
-The 3-week MVP should include only:
-- State snapshot before decisions
-- Visual decision graph
-- Production failure replay
+# MVP Scope
 
-Explicitly out of scope:
+The minimal demo must prove the **replayable decision state**.
+
+<Steps>
+  <Step title="State snapshot">
+    Capture the decision environment before each step.
+  </Step>
+  <Step title="Decision graph">
+    Visualize steps and causal links.
+  </Step>
+  <Step title="Replay">
+    Recreate production failures in dev.
+  </Step>
+</Steps>
+
+## Out of scope for MVP
+
 - Constraint tracking
 - Suggestion engine
 - Predictive reliability
 
-Success metric:
-- One developer debugs a production failure 10x faster.
+<Callout type="tip">
+If the MVP creates a “debugged in minutes” moment, it is fundable.
+</Callout>

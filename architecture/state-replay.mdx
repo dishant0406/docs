@@ -3,16 +3,34 @@ title: State Replay
 description: Re-executable decision context for debugging.
 ---
 
-State replay is the category-defining feature.
+# State Replay
 
-Goal:
-- Recreate the exact decision environment that led to a failure.
-- Allow a developer to modify inputs and re-run the agent in a controlled environment.
+State replay turns production failures into debuggable sessions by recreating the decision environment.
 
-Replay requires:
-- Prompt state
-- Tool definitions and parameters
+```mermaid
+sequenceDiagram
+  participant P as Production
+  participant W as WhyOps
+  participant D as Developer
+
+  P->>W: Failure event + state
+  W-->>D: Replayable snapshot
+  D->>W: Modify input + re-run
+  W-->>D: Results + diff
+```
+
+## What replay needs
+
+- Prompt + tool definitions
 - Memory retrieval results
-- Runtime limits and planner state
+- Planner state + runtime limits
+- Tool outputs and errors
 
-This turns production failures into debuggable, reproducible sessions.
+<CardGroup cols={2}>
+  <Card title="Why it matters" icon="bug">
+    You can’t fix what you can’t reproduce.
+  </Card>
+  <Card title="Why it’s hard" icon="triangle-exclamation">
+    Most state never appears in the prompt.
+  </Card>
+</CardGroup>

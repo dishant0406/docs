@@ -3,11 +3,12 @@ title: Tool Execution Event
 description: The ground truth of tool I/O, retries, and errors.
 ---
 
-Purpose:
-- Capture what really happened when a tool ran.
-- Compare actual output to what the LLM received.
+# Tool Execution Event
 
-Example:
+This event captures the reality of tool execution, including failures and retries that the LLM never sees.
+
+## Example
+
 ```json
 {
   "event": "tool_execution",
@@ -24,7 +25,12 @@ Example:
 }
 ```
 
-Key value:
-- Surfaces silent retries.
-- Shows tool output sanitization.
-- Explains latency spikes and failure chains.
+## Why it matters
+
+- Reveals silent retry loops
+- Detects tool output sanitization
+- Explains latency spikes
+
+<Callout type="tip">
+The `llm_received` vs `actual_output` delta is a core differentiator.
+</Callout>

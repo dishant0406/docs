@@ -3,20 +3,36 @@ title: Category Positioning
 description: What WhyOps is, and what it is not.
 ---
 
-WhyOps is not:
-- Logging
-- LLM tracing
-- APM
-- A monitoring dashboard
+# Category Positioning
 
-WhyOps is:
-- Agent Runtime Observability
-- Decision infrastructure for agents
-- A reproducibility layer for agent state
+WhyOps defines **Agent Runtime Observability (ARO)**.
 
-Positioning statement:
-- Observability shows what happened. WhyOps shows why.
+<CardGroup cols={3}>
+  <Card title="Not logs" icon="file-lines">Not a log viewer or trace console.</Card>
+  <Card title="Not prompt-only" icon="comment-dots">Not just LLM request capture.</Card>
+  <Card title="Not APM" icon="chart-simple">Not service-level telemetry.</Card>
+</CardGroup>
 
-Category comparison:
-- Server logs to APM to distributed tracing to agent cognition observability.
-- WhyOps represents the next abstraction shift.
+## Positioning statement
+
+**Observability shows what happened. WhyOps shows why.**
+
+```mermaid
+flowchart LR
+  A[Server Logs] --> B[APM]
+  B --> C[Distributed Tracing]
+  C --> D[Agent Cognition Observability]
+  D --> E[WhyOps]
+```
+
+## Competitive differentiation
+
+| Category | Focus | WhyOps difference |
+| --- | --- | --- |
+| LLM observability | API calls | Decision context and runtime cognition |
+| Prompt debugging | Prompt quality | Agent decision reconstruction |
+| APM | Service performance | Agent behavior explanation |
+
+<Callout type="tip">
+The insight is not “agents are unreliable” but “agents are un-debuggable because decision state is invisible.”
+</Callout>

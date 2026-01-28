@@ -3,20 +3,67 @@ title: WhyOps Overview
 description: Decision infrastructure for agent systems. Understand not just what happened, but why.
 ---
 
-WhyOps is an Agent Runtime Observability platform. It is a new infrastructure layer that sits between traditional observability and agent execution to make autonomous systems debuggable.
+# WhyOps
 
-Core idea:
-- Observability shows what happened. WhyOps shows why.
-- The missing layer is not more logs. It is structured decision context and reproducible state.
+WhyOps is the Agent Runtime Observability platform. It does not just show what happened in an agent system. It reconstructs why the system made a decision by capturing the decision environment itself.
 
-Why this exists:
-- Agents are non-deterministic, tool-using, memory-influenced, and planner-driven.
-- Traditional observability was designed for deterministic software.
-- Current LLM tracing tools show API calls, not agent cognition.
+<Callout type="info">
+WhyOps is currently a concept and architecture. There is no SDK or proxy available yet. This documentation captures the design and strategy.
+</Callout>
 
-What WhyOps captures:
-- Decision context at each step (memory retrievals, planner state, tool reality).
-- The difference between what actually happened and what the LLM saw.
-- The chain of causes that led to a decision.
+<CardGroup cols={3}>
+  <Card title="Decision Infrastructure" icon="brain" href="/core-model">
+    Instrument decision boundaries to expose cognition, not just API calls.
+  </Card>
+  <Card title="State Reproducibility" icon="repeat" href="/architecture/state-replay">
+    Recreate the exact decision context to debug production failures.
+  </Card>
+  <Card title="Agent Runtime Observability" icon="timeline" href="/positioning">
+    A new layer beyond logs and traces: cognition-level telemetry.
+  </Card>
+</CardGroup>
 
-If you want to build reliable, production-grade agents, you need to see the decision environment, not just the final response.
+## The gap in today’s stack
+
+Traditional observability works for deterministic software. Agents are not deterministic. They iterate, use tools, mutate memory, and are guided by planners. Existing tools show LLM calls, not agent cognition.
+
+```mermaid
+flowchart LR
+  A[Model Layer
+OpenAI, Anthropic] --> B[Framework Layer
+LangChain, LlamaIndex]
+  B --> C[Observability Layer
+LangSmith, Langfuse, Helicone]
+  C --> D[Missing Layer
+Interpretability + State Reproducibility]
+  D --> E[WhyOps]
+```
+
+## The promise
+
+- **Observability shows what happened. WhyOps shows why.**
+- Captures the difference between **LLM cognition** and **runtime cognition**.
+- Builds a **decision graph** and a **replayable state**.
+
+<AccordionGroup>
+  <Accordion title="What WhyOps is not">
+    <ul>
+      <li>Another logging dashboard</li>
+      <li>A prompt debugger</li>
+      <li>A generic APM tool</li>
+    </ul>
+  </Accordion>
+  <Accordion title="What WhyOps is">
+    <ul>
+      <li>Decision context reconstruction</li>
+      <li>Agent runtime observability</li>
+      <li>Reproducible state for debugging</li>
+    </ul>
+  </Accordion>
+</AccordionGroup>
+
+## How to read these docs
+
+- Start with **Problem Space** and **Core System Model**.
+- Follow with **Architecture** and **Event Schema**.
+- Use **Implementation Plan** and **Strategy** to guide execution.

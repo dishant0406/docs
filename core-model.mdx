@@ -3,14 +3,45 @@ title: Core System Model
 description: Two layers of reality and the four cognitive boundaries.
 ---
 
-Two layers of reality:
-- LLM cognition: visible to a proxy (prompts, tools, responses).
-- Runtime cognition: hidden state in the agent loop (retries, planner state, memory changes).
+# Core System Model
 
-The four cognitive boundaries:
-1. Planner step: the agent chooses the next action.
-2. Memory retrieval: past information influences the decision.
-3. LLM reasoning: the model generates action or response.
-4. Tool execution: the external world is touched.
+WhyOps is built on a simple but crucial discovery: **LLMs are stateless, agents are stateful.**
 
-WhyOps instruments the boundaries, not framework internals.
+## Two layers of reality
+
+<CardGroup cols={2}>
+  <Card title="LLM Cognition" icon="message">
+    Visible in prompts and responses. Capturable via a proxy.
+  </Card>
+  <Card title="Runtime Cognition" icon="gear">
+    Hidden state: retries, memory mutation, planner state, termination rules.
+  </Card>
+</CardGroup>
+
+```mermaid
+flowchart TB
+  L["LLM Cognition<br/>Prompt, Tools, Response"]:::visible
+  R["Runtime Cognition<br/>State, Retries, Planner, Memory"]:::visible
+  L --> E[Decision Environment]
+  R --> E
+  E --> D[Agent Decision]
+
+  D --> P[Planner Step]
+  P --> M[Memory Retrieval]
+  M --> C[LLM Reasoning]
+  C --> T[Tool Execution]
+  T --> P
+
+
+```
+
+## The four cognitive boundaries
+
+1. **Planner step** — agent decides next action.
+2. **Memory retrieval** — past knowledge influences decision.
+3. **LLM reasoning** — model produces action or response.
+4. **Tool execution** — external world interaction.
+
+<Callout type="info">
+Instrumenting these boundaries reconstructs the full cognition loop without deep framework coupling.
+</Callout>

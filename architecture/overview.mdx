@@ -3,14 +3,37 @@ title: Architecture Overview
 description: The high-level system architecture for WhyOps.
 ---
 
-WhyOps is designed to reconstruct decision context, not just log events.
+# Architecture Overview
 
-Key layers:
-- LLM proxy: captures prompts, tool definitions, responses, and token usage.
-- Tool wrapper: captures execution reality (inputs, outputs, retries, errors, latency).
-- State builder: reconstructs the decision loop and produces a causal graph.
+WhyOps reconstructs cognition by capturing decision boundaries and stitching them into a causal graph.
 
-Outcome:
-- A reproducible decision trace.
-- A decision graph UI that reflects the agent topology.
-- A replay engine that reconstructs state for debugging.
+```mermaid
+flowchart LR
+  A[Agent Code] --> B[WhyOps Proxy Layer]
+  A --> C[WhyOps Tool Wrapper]
+  B --> D[LLM Provider]
+  C --> E[External Tools]
+  B --> F[State Builder]
+  C --> F
+  F --> G[Decision Graph + Replay]
+```
+
+## The three capture layers
+
+<CardGroup cols={3}>
+  <Card title="LLM Proxy" icon="network-wired">
+    Prompts, tools, responses, latency, token usage.
+  </Card>
+  <Card title="Tool Wrapper" icon="plug">
+    Actual tool I/O, retries, errors, and latency.
+  </Card>
+  <Card title="State Builder" icon="project-diagram">
+    Reconstructs step boundaries and causal graph.
+  </Card>
+</CardGroup>
+
+## Why this works
+
+- Every framework ultimately calls functions.
+- Decision boundaries are stable across toolchains.
+- Causal links between memory → LLM → tool → LLM explain behavior.

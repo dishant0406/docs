@@ -3,10 +3,12 @@ title: Memory Retrieval Event
 description: What knowledge influenced a decision.
 ---
 
-Purpose:
-- Capture the memory candidates and filters that shaped the prompt.
+# Memory Retrieval Event
 
-Example:
+Memory retrieval is cognition. Memory storage is not. This event captures which knowledge influenced a decision.
+
+## Example
+
 ```json
 {
   "event": "memory_retrieval",
@@ -22,6 +24,8 @@ Example:
 }
 ```
 
-Key value:
-- Shows what knowledge was considered and rejected.
-- Enables retrieval quality diagnostics.
+## Diagnostic value
+
+- Shows what was **considered** vs **used**
+- Explains retrieval drift across runs
+- Enables threshold tuning

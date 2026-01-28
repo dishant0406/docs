@@ -3,10 +3,12 @@ title: Agent Termination Event
 description: Why execution stopped outside the LLM.
 ---
 
-Purpose:
-- Attribute termination to runtime limits, not model intent.
+# Agent Termination Event
 
-Example:
+Agents often stop due to runtime limits, not model intent.
+
+## Example
+
 ```json
 {
   "event": "agent_termination",
@@ -20,6 +22,11 @@ Example:
 }
 ```
 
-Key value:
-- Avoids false attribution to LLM decisions.
-- Enables clearer failure classification.
+## Stop reasons to track
+
+- Max iterations
+- Timeout
+- Token budget
+- Exception
+- Manual stop
+- Success criteria met

@@ -3,16 +3,25 @@ title: SDK Layer (Concept)
 description: The runtime instrumentation layer for full decision context.
 ---
 
-The SDK layer wraps decision boundaries to capture runtime cognition.
+# SDK Layer
 
-Planned capabilities:
-- Tool execution truth (raw output vs LLM-received output).
-- Tool retries and failures.
-- Planner state per step.
-- Memory retrieval candidates and filters.
+The SDK wraps decision boundaries to expose runtime cognition.
 
-Why it matters:
-- This data explains why the agent behaved the way it did.
-- It closes the gap between LLM reasoning and runtime reality.
+## What it captures beyond the proxy
 
-Note: The SDK does not exist yet. This is a design target.
+- Tool retries and failure loops
+- Actual tool output vs LLM-received output
+- Planner state per iteration
+- Memory retrieval candidates, scores, and filters
+
+```mermaid
+flowchart LR
+  A[Tool Call] --> B[SDK Wrapper]
+  B --> C[Tool Execution]
+  C --> B
+  B --> D[Event Stream]
+```
+
+<Callout type="warning">
+SDK instrumentation is planned but not available yet.
+</Callout>

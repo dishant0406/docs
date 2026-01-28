@@ -3,14 +3,23 @@ title: Phase 2 (SDK Instrumentation)
 description: Deep runtime visibility for power users.
 ---
 
-Phase 2 goals:
-- Tool wrapper with retries, errors, and latency truth.
-- Memory retrieval event capture.
-- Planner state events per iteration.
-- Full decision context for replay accuracy.
+# Phase 2 (SDK Instrumentation)
 
-Why it matters:
-- Unlocks silent retry detection and memory influence mapping.
-- Enables accurate root-cause analysis.
+Goals:
+- Tool retries, errors, latency truth
+- Memory retrieval capture
+- Planner state capture
+- Accurate replay context
 
-Note: This phase is planned. No SDK is available yet.
+<CardGroup cols={2}>
+  <Card title="Unlocks" icon="key">
+    Silent retry detection, memory influence mapping, tool sanitization deltas.
+  </Card>
+  <Card title="Requires" icon="code">
+    Instrumentation hooks and decorators.
+  </Card>
+</CardGroup>
+
+<Callout type="warning">
+This phase is planned. There is no SDK yet.
+</Callout>

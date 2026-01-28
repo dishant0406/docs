@@ -3,18 +3,52 @@ title: The Problem Space
 description: Why agent systems are hard to debug with traditional observability.
 ---
 
-Agent failures look random because their decision state is invisible.
+# The Problem Space
 
-Typical developer questions:
-- Why did the agent call this tool?
+Agent failures feel random because the decision state is invisible.
+
+## What developers want to know
+
+- Why did the agent choose this tool?
 - Why did it retry four times?
 - Why did it ignore the correct document?
 - Why did it stop early?
 - Why did it hallucinate with correct data available?
 
-Root cause:
-- LLMs are stateless, but agent runtimes are stateful.
-- Frameworks mutate state outside the LLM prompt.
-- Existing tools log LLM calls, not runtime cognition.
+## Why traditional observability fails
 
-WhyOps targets the missing layer: interpretability and state reproducibility for agent runtimes.
+- It was built for deterministic software.
+- It treats the system as a request/response loop.
+- It does not see memory retrievals, planner state, or internal retries.
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant L as LLM
+  participant R as Runtime
+  participant T as Tool
+
+  U->>L: Prompt
+  L->>R: Tool call request
+  R->>T: Execute tool
+  T-->>R: Error
+  R->>T: Retry (hidden)
+  T-->>R: Success
+  R-->>L: Cleaned result
+  L-->>U: Response
+
+  Note over R: Most tooling only sees LLM <-> Runtime boundary
+```
+
+<Callout type="info">
+WhyOps focuses on the decision boundaries where cognition happens, not just the LLM API call.
+</Callout>
+
+## The real root cause
+
+LLM cognition is visible in the prompt. Runtime cognition is not.
+
+- **LLM cognition**: prompt, tools, response.
+- **Runtime cognition**: retries, memory changes, planner state, termination rules.
+
+The missing layer is **interpretability + state reproducibility**.

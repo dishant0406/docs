@@ -3,14 +3,21 @@ title: Phase 1 (Proxy-Only)
 description: Fast adoption and decision trace viewing.
 ---
 
-Phase 1 goals:
-- LLM proxy for prompts, tools, responses, latency, and tokens.
-- Tool call detection and association with LLM requests.
-- Decision graph UI from inferred step boundaries.
-- Replay based on LLM-visible state.
+# Phase 1 (Proxy-Only)
 
-Why it matters:
-- Zero-friction adoption.
-- Immediate visual value.
+Goals:
+- LLM proxy capture
+- Tool call detection
+- Decision graph from inferred steps
+- Replay from LLM-visible state
 
-Note: This phase is planned. No proxy is available yet.
+```mermaid
+flowchart LR
+  A[LLM Proxy] --> B[Event Stream]
+  B --> C[Decision Graph]
+  C --> D[Replay]
+```
+
+<Callout type="warning">
+This phase is planned. There is no proxy yet.
+</Callout>

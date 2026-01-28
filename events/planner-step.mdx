@@ -3,10 +3,12 @@ title: Planner Step Event
 description: Strategy state per iteration, not just configuration.
 ---
 
-Purpose:
-- Capture the internal state that leads to action selection.
+# Planner Step Event
 
-Example:
+Planner state is ephemeral cognition. It must be captured every iteration.
+
+## Example
+
 ```json
 {
   "event": "planner_step",
@@ -25,6 +27,8 @@ Example:
 }
 ```
 
-Key value:
-- Explains why retries happened.
-- Shows strategy shifts and early termination reasoning.
+## Why it matters
+
+- Explains strategy shifts
+- Shows why retries happened
+- Prevents misattribution to the LLM

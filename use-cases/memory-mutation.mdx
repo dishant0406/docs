@@ -3,14 +3,19 @@ title: Memory Mutation Outside the LLM
 description: Memory changes that shape future decisions without LLM visibility.
 ---
 
-Scenario:
-- Runtime stores results to memory without passing through the LLM.
-- Future decisions are influenced by this state.
+# Memory Mutation Outside the LLM
 
-Why it is hard to debug:
-- Proxy cannot see these changes.
-- Developers see shifts in behavior without clear cause.
+## Scenario
 
-WhyOps value:
-- Focuses on memory retrieval events that influence decisions.
-- Links retrieved memories to subsequent LLM calls.
+- Runtime writes to memory without involving the LLM.
+- Future decisions are influenced by that memory.
+
+## Why it is hard to debug
+
+- Proxy does not see memory changes.
+- Behavior changes appear unexplained.
+
+## WhyOps value
+
+- Focuses on **memory retrieval** events.
+- Links retrieved memories to subsequent decisions.

@@ -3,10 +3,10 @@ title: Metadata Envelope
 description: Thread and step metadata for DAG reconstruction.
 ---
 
-Purpose:
-- Create stable links across events.
+# Metadata Envelope
 
-Example:
+Metadata links events into a decision DAG.
+
 ```json
 {
   "_whyops": {
@@ -18,6 +18,8 @@ Example:
 }
 ```
 
-Key value:
-- Enables decision graphs instead of linear logs.
-- Preserves causality across tool calls and LLM responses.
+## Why it matters
+
+- Allows tool retries to be grouped under a single step
+- Enables causal graphs instead of flat logs
+- Preserves lineage across memory → LLM → tool chains

@@ -3,16 +3,37 @@ title: Silent Tool Retries
 description: Why proxies miss internal retry loops.
 ---
 
-Scenario:
-- LLM calls a tool.
-- Tool fails and the framework retries internally.
+# Silent Tool Retries
+
+## Scenario
+
+- LLM requests a tool.
+- The tool fails.
+- The framework retries internally.
 - Only the final success is sent to the LLM.
 
-Why it is hard to debug:
-- Proxy sees no retries.
-- LLM never knows a failure happened.
-- Latency spikes appear unexplained.
+```mermaid
+sequenceDiagram
+  participant L as LLM
+  participant R as Runtime
+  participant T as Tool
 
-WhyOps value:
-- Tool execution events capture retries, failures, and timing.
-- Planner state reveals whether retries were strategic or automatic.
+  L->>R: Call tool
+  R->>T: Attempt 1
+  T-->>R: Timeout
+  R->>T: Attempt 2
+  T-->>R: Timeout
+  R->>T: Attempt 3
+  T-->>R: Success
+  R-->>L: Success (no failures shown)
+```
+
+## Why it is hard to debug
+
+- Proxy sees one tool call and one success.
+- Latency spikes have no obvious cause.
+
+## WhyOps value
+
+- Tool execution event captures every retry.
+- Planner step shows whether the retry was strategic or automatic.

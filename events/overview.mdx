@@ -3,13 +3,31 @@ title: Event Schema Overview
 description: The five canonical event types and their cognitive value.
 ---
 
-WhyOps uses event schemas that map to decision boundaries.
+# Event Schema Overview
 
-Canonical event types:
-- llm_call: what the model saw and produced
-- tool_execution: what actually happened outside the LLM
-- memory_retrieval: which knowledge influenced a decision
-- planner_step: strategy and internal decision state
-- agent_termination: why execution stopped
+WhyOps uses a small set of canonical event types mapped to decision boundaries.
 
-Each event is linked by thread and step metadata for DAG reconstruction.
+<CardGroup cols={3}>
+  <Card title="LLM Call" icon="message" href="/events/llm-call">LLM cognition boundary.</Card>
+  <Card title="Tool Execution" icon="plug" href="/events/tool-execution">Execution reality boundary.</Card>
+  <Card title="Memory Retrieval" icon="database" href="/events/memory-retrieval">Knowledge influence boundary.</Card>
+  <Card title="Planner Step" icon="route" href="/events/planner-step">Strategy boundary.</Card>
+  <Card title="Agent Termination" icon="stop" href="/events/agent-termination">Stop reason boundary.</Card>
+</CardGroup>
+
+```mermaid
+flowchart LR
+  M[Memory Retrieval] --> L[LLM Call]
+  L --> T[Tool Execution]
+  T --> L2[LLM Call]
+  L2 --> P[Planner Step]
+  P --> E[Agent Termination]
+```
+
+## Linking events
+
+Every event includes thread and step metadata to reconstruct a DAG.
+
+- `thread_id` links a decision journey.
+- `step_id` and `parent_step` establish causality.
+- `span_id` allows tool spans and retries.

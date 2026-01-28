@@ -3,10 +3,12 @@ title: LLM Call Event
 description: Captures prompt context, tools, responses, and usage.
 ---
 
-Purpose:
-- Represent what the LLM saw and produced at a step.
+# LLM Call Event
 
-Example:
+The LLM call event anchors the cognition boundary: what the model saw and produced.
+
+## Example
+
 ```json
 {
   "event": "llm_call",
@@ -22,6 +24,15 @@ Example:
 }
 ```
 
-Key value:
-- Establishes the LLM cognition boundary.
-- Links tool requests to real tool executions.
+## Required fields
+
+| Field | Purpose |
+| --- | --- |
+| `thread_id` | Join events across the decision loop |
+| `model` | Model identity and version |
+| `messages` | Prompt context the model saw |
+| `response` | Model output and tool calls |
+
+<Callout type="info">
+LLM call events are necessary but insufficient for debugging agent cognition.
+</Callout>
