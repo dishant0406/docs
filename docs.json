@@ -3,23 +3,14 @@
   "name": "WhyOps Documentation",
   "theme": "mint",
   "logo": "/images/WhyOps-Logo.svg",
-  "favicon": "/favicon.svg",
+  "favicon": "/images/android-chrome-192x192.png",
   "colors": {
     "primary": "#6366f1",
     "light": "#818cf8",
     "dark": "#4f46e5"
   },
   "navbar": {
-    "links": [
-      {
-        "label": "GitHub",
-        "href": "https://github.com/whyops/whyops"
-      },
-      {
-        "label": "Blog",
-        "href": "https://whyops.com/blog"
-      }
-    ],
+    "links": [],
     "primary": {
       "type": "button",
       "label": "Get Started",
