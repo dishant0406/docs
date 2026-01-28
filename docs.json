@@ -2,10 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "name": "WhyOps Documentation",
   "theme": "mint",
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
+  "logo": "/images/WhyOps-Logo.svg",
   "favicon": "/favicon.svg",
   "colors": {
     "primary": "#6366f1",
@@ -199,5 +196,9 @@
     "ga4": {
       "measurementId": "G-XXXXXXXXXX"
     }
+  },
+  "appearance": {
+    "strict": true,
+    "default": "dark"
   }
 }
