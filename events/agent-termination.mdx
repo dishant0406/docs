@@ -1,0 +1,25 @@
+---
+title: Agent Termination Event
+description: Why execution stopped outside the LLM.
+---
+
+Purpose:
+- Attribute termination to runtime limits, not model intent.
+
+Example:
+```json
+{
+  "event": "agent_termination",
+  "thread_id": "t1",
+  "reason": "max_iterations",
+  "steps_used": 5,
+  "steps_allowed": 5,
+  "last_llm_state": "requested_tool_call",
+  "incomplete": true,
+  "timestamp": "2026-01-28T10:30:45Z"
+}
+```
+
+Key value:
+- Avoids false attribution to LLM decisions.
+- Enables clearer failure classification.

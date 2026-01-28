@@ -1,0 +1,17 @@
+---
+title: Proxy Layer (Concept)
+description: What the proxy is expected to capture and why it matters.
+---
+
+The proxy layer sees LLM cognition only. It is necessary but not sufficient.
+
+Captured by the proxy:
+- System prompt, user messages, and tools.
+- LLM responses and tool call requests.
+- Token usage and latency.
+
+Limits:
+- Silent retries, tool sanitization, and memory mutation happen outside the LLM.
+- Proxy-only data can make failures look like model hallucinations.
+
+Proxy mode is the adoption engine. SDK mode is the accuracy engine.

@@ -1,0 +1,30 @@
+---
+title: Tool Execution Event
+description: The ground truth of tool I/O, retries, and errors.
+---
+
+Purpose:
+- Capture what really happened when a tool ran.
+- Compare actual output to what the LLM received.
+
+Example:
+```json
+{
+  "event": "tool_execution",
+  "thread_id": "t1",
+  "tool": "get_weather",
+  "args": {"city": "NYC"},
+  "success": false,
+  "error": "timeout",
+  "error_raw": "ConnectionTimeout: host api.weather.com timeout after 5000ms",
+  "retry": 2,
+  "duration_ms": 5234,
+  "llm_received": "Weather service unavailable",
+  "actual_output": null
+}
+```
+
+Key value:
+- Surfaces silent retries.
+- Shows tool output sanitization.
+- Explains latency spikes and failure chains.

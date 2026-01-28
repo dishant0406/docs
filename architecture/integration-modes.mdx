@@ -1,0 +1,18 @@
+---
+title: Integration Modes (Concept)
+description: Proxy and SDK modes, and why both are needed.
+---
+
+WhyOps has two planned integration paths:
+
+Proxy mode (fast adoption):
+- Minimal code changes (URL change or env var).
+- Captures prompts, tools, and responses.
+- Reconstructs decision loops by pattern inference.
+
+SDK mode (deep visibility):
+- Decorators or wrappers around tool execution and memory retrieval.
+- Captures runtime state not visible to the LLM.
+- Enables tool retries, planner state, and memory influence mapping.
+
+Note: These modes are conceptual and not available yet.

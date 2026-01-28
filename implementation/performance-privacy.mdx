@@ -1,0 +1,15 @@
+---
+title: Performance and Privacy
+description: How WhyOps should behave in production.
+---
+
+Performance targets:
+- Proxy adds minimal latency per LLM call (tens of ms).
+- SDK events are recorded asynchronously.
+- Uploads are batched to reduce overhead.
+
+Privacy and security considerations:
+- Optional on-prem proxy deployment.
+- Encryption in transit and at rest.
+- PII scrubbing and retention controls.
+- Role-based access and auditability.

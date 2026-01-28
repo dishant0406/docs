@@ -1,124 +1,22 @@
 ---
-title: "Introduction to WhyOps"
-description: "Agent Runtime Observability Platform - Making autonomous systems debuggable"
+title: WhyOps Overview
+description: Decision infrastructure for agent systems. Understand not just what happened, but why.
 ---
 
-# Welcome to WhyOps
+WhyOps is an Agent Runtime Observability platform. It is a new infrastructure layer that sits between traditional observability and agent execution to make autonomous systems debuggable.
 
-WhyOps is the **Agent Runtime Observability** platform that bridges the gap between what your AI agents do and why they do it.
+Core idea:
+- Observability shows what happened. WhyOps shows why.
+- The missing layer is not more logs. It is structured decision context and reproducible state.
 
-## The Core Problem
+Why this exists:
+- Agents are non-deterministic, tool-using, memory-influenced, and planner-driven.
+- Traditional observability was designed for deterministic software.
+- Current LLM tracing tools show API calls, not agent cognition.
 
-When AI agents behave unexpectedly in production, developers face a fundamental challenge: **agents are un-debuggable because decision state is invisible**.
+What WhyOps captures:
+- Decision context at each step (memory retrievals, planner state, tool reality).
+- The difference between what actually happened and what the LLM saw.
+- The chain of causes that led to a decision.
 
-Traditional observability tools show you:
-- API calls made
-- Responses received
-- Execution traces
-
-But they don't show you:
-- Why a specific tool was chosen
-- Why the agent retried 4 times
-- Why it ignored relevant context
-- Why it stopped execution early
-- Why it hallucinated despite having correct data
-
-## What WhyOps Does Differently
-
-<Note>
-**Observability shows what happened. WhyOps shows why.**
-</Note>
-
-WhyOps captures and reconstructs the **cognitive state** of your agents, enabling you to:
-
-1. **See decision reasoning** - Understand which context influenced which decisions
-2. **Replay production failures** - Recreate exact agent state for debugging
-3. **Track hidden execution** - Surface silent retries, sanitized errors, and runtime decisions
-4. **Visualize agent flow** - See your agent's decision graph, not just API logs
-
-## A New Infrastructure Layer
-
-WhyOps represents a **missing layer** in the AI stack:
-
-```
-┌─────────────────────────────────────┐
-│ Model Layer (OpenAI, Anthropic)     │
-├─────────────────────────────────────┤
-│ Framework Layer (LangChain, CrewAI) │
-├─────────────────────────────────────┤
-│ Observability (LangSmith, LangFuse) │
-├─────────────────────────────────────┤
-│ ✨ WhyOps - Interpretability Layer  │ ← You are here
-└─────────────────────────────────────┘
-```
-
-## Quick Example
-
-Without WhyOps:
-```
-❌ Agent failed
-❌ Last LLM call looked normal
-❌ Spent 4 hours debugging
-```
-
-With WhyOps:
-```
-✅ Agent terminated: max_iterations (5/5 steps used)
-✅ Tool 'search_web' failed silently on retry 2
-✅ Memory retrieval returned 0 results (threshold too high)
-✅ Fixed in 10 minutes
-```
-
-## Next Steps
-
-<CardGroup cols={2}>
-  <Card title="Why WhyOps?" icon="question" href="/why-whyops">
-    Understand the problem space and why existing tools fall short
-  </Card>
-  <Card title="Core Concepts" icon="lightbulb" href="/core-concepts">
-    Learn the fundamental concepts behind agent observability
-  </Card>
-  <Card title="Quick Start" icon="rocket" href="/quickstart">
-    Get started with WhyOps in minutes
-  </Card>
-  <Card title="Architecture" icon="diagram-project" href="/architecture/overview">
-    Dive into how WhyOps works under the hood
-  </Card>
-</CardGroup>
-
-## Key Features
-
-<AccordionGroup>
-  <Accordion title="State Replay" icon="clock-rotate-left">
-    Re-execute production failures in your dev environment with exact cognitive state
-  </Accordion>
-  
-  <Accordion title="Decision Graph" icon="diagram-project">
-    Visual representation of your agent's decision flow and state transitions
-  </Accordion>
-  
-  <Accordion title="Silent Failure Detection" icon="eye">
-    Catch tool retries, sanitized errors, and framework-level decisions invisible to LLMs
-  </Accordion>
-  
-  <Accordion title="Memory Influence Tracking" icon="brain">
-    See which memories and context influenced each agent decision
-  </Accordion>
-</AccordionGroup>
-
-## Who Is This For?
-
-WhyOps is designed for:
-
-- **AI Engineers** building production agent systems
-- **DevOps Teams** debugging agent reliability issues
-- **ML Engineers** optimizing agent performance
-- **Product Teams** ensuring agent quality and compliance
-
-<Warning>
-**Note:** WhyOps is currently in development. This documentation describes the planned architecture and features. Both proxy and SDK implementations are coming soon.
-</Warning>
-
----
-
-Ready to make your agents debuggable? Start with [Why WhyOps?](/why-whyops)
+If you want to build reliable, production-grade agents, you need to see the decision environment, not just the final response.

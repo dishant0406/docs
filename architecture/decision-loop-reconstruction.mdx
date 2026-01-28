@@ -1,0 +1,17 @@
+---
+title: Decision Loop Reconstruction
+description: Rebuilding agent steps without deep framework hooks.
+---
+
+WhyOps reconstructs the agent loop by observing boundary events:
+- LLM call -> tool execution -> LLM call -> tool execution.
+
+This pattern infers step boundaries even without direct framework hooks.
+
+Benefits:
+- Framework-agnostic.
+- Scales across tool stacks.
+- Enables decision graphs and replay with minimal integration.
+
+Limit:
+- Some runtime state requires SDK instrumentation to be precise.

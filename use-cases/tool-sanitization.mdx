@@ -1,0 +1,16 @@
+---
+title: Tool Output Sanitization
+description: When frameworks mask real errors.
+---
+
+Scenario:
+- Tool returns malformed output.
+- Framework sanitizes the error before passing it to the LLM.
+
+Why it is hard to debug:
+- The proxy logs the cleaned message, not the real error.
+- Developers chase the wrong root cause.
+
+WhyOps value:
+- Records both actual output and LLM-received output.
+- Makes sanitization visible in the decision graph.

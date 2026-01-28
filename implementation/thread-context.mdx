@@ -1,0 +1,15 @@
+---
+title: Thread Context Propagation
+description: Keeping every event linked to a decision thread.
+---
+
+Correctness depends on linking every event to a single thread.
+
+Planned design:
+- A context API exposes thread and step IDs at runtime.
+- Tool wrappers attach the current context automatically.
+- Retries inherit the parent context.
+
+Outcome:
+- Reliable event correlation.
+- Accurate decision graphs and replay.

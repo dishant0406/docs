@@ -1,0 +1,30 @@
+---
+title: Planner Step Event
+description: Strategy state per iteration, not just configuration.
+---
+
+Purpose:
+- Capture the internal state that leads to action selection.
+
+Example:
+```json
+{
+  "event": "planner_step",
+  "thread_id": "t1",
+  "step": 3,
+  "max_steps": 5,
+  "last_tool_error": "timeout",
+  "retry_count": 2,
+  "confidence_score": 0.41,
+  "decision": "retry_tool",
+  "reasoning": "Previous timeout suggests network issue, attempting retry with backoff",
+  "state_snapshot": {
+    "plan_remaining": ["verify_data", "synthesize_response"],
+    "execution_mode": "cautious"
+  }
+}
+```
+
+Key value:
+- Explains why retries happened.
+- Shows strategy shifts and early termination reasoning.

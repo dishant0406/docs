@@ -1,0 +1,15 @@
+---
+title: RAG Mechanics and Hidden Cognition
+description: Retrieval steps that are invisible to the LLM.
+---
+
+Scenario:
+- Query rewriting, vector search, ranking, and filtering happen before the prompt.
+
+Why it is hard to debug:
+- Proxy sees only the final injected context.
+- Two runs can look identical while coming from different retrieval paths.
+
+WhyOps value:
+- Memory retrieval events reveal candidates, scores, and filters.
+- Enables analysis of retrieval quality and drift.

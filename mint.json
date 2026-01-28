@@ -1,91 +1,99 @@
 {
   "$schema": "https://mintlify.com/schema.json",
-  "name": "Starter Kit",
+  "name": "WhyOps",
   "logo": {
-    "dark": "/logo/dark.svg",
-    "light": "/logo/light.svg"
+    "light": "/images/WhyOps-Logo.svg",
+    "dark": "/images/WhyOps-Logo.svg"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/images/android-chrome-192x192.png",
   "colors": {
-    "primary": "#0D9373",
-    "light": "#07C983",
-    "dark": "#0D9373",
+    "primary": "#0F766E",
+    "light": "#14B8A6",
+    "dark": "#0F766E",
     "anchors": {
-      "from": "#0D9373",
-      "to": "#07C983"
+      "from": "#0F766E",
+      "to": "#14B8A6"
     }
   },
   "topbarLinks": [
     {
-      "name": "Support",
-      "url": "mailto:hi@mintlify.com"
+      "name": "WhyOps.com",
+      "url": "https://whyops.com"
     }
   ],
   "topbarCtaButton": {
-    "name": "Dashboard",
-    "url": "https://dashboard.mintlify.com"
+    "name": "Contact",
+    "url": "mailto:hello@whyops.com"
   },
-  "tabs": [
-    {
-      "name": "API Reference",
-      "url": "api-reference"
-    }
-  ],
-  "anchors": [
-    {
-      "name": "Documentation",
-      "icon": "book-open-cover",
-      "url": "https://mintlify.com/docs"
-    },
-    {
-      "name": "Community",
-      "icon": "slack",
-      "url": "https://mintlify.com/community"
-    },
-    {
-      "name": "Blog",
-      "icon": "newspaper",
-      "url": "https://mintlify.com/blog"
-    }
-  ],
   "navigation": [
     {
       "group": "Get Started",
       "pages": [
         "introduction",
-        "quickstart",
-        "development"
+        "status",
+        "problem-space",
+        "positioning",
+        "core-model"
       ]
     },
     {
-      "group": "Essentials",
+      "group": "Architecture",
       "pages": [
-        "essentials/markdown",
-        "essentials/code",
-        "essentials/images",
-        "essentials/settings",
-        "essentials/navigation",
-        "essentials/reusable-snippets"
+        "architecture/overview",
+        "architecture/integration-modes",
+        "architecture/proxy-layer",
+        "architecture/sdk-layer",
+        "architecture/decision-loop-reconstruction",
+        "architecture/state-replay",
+        "architecture/decision-graph"
       ]
     },
     {
-      "group": "API Documentation",
+      "group": "Event Schema",
       "pages": [
-        "api-reference/introduction"
+        "events/overview",
+        "events/llm-call",
+        "events/tool-execution",
+        "events/memory-retrieval",
+        "events/planner-step",
+        "events/agent-termination",
+        "events/metadata-envelope"
       ]
     },
     {
-      "group": "Endpoint Examples",
+      "group": "Use Cases",
       "pages": [
-        "api-reference/endpoint/get",
-        "api-reference/endpoint/create",
-        "api-reference/endpoint/delete"
+        "use-cases/silent-retries",
+        "use-cases/tool-sanitization",
+        "use-cases/memory-mutation",
+        "use-cases/framework-termination",
+        "use-cases/rag-mechanics"
+      ]
+    },
+    {
+      "group": "Implementation Plan",
+      "pages": [
+        "implementation/principles",
+        "implementation/mvp",
+        "implementation/phase-1-proxy",
+        "implementation/phase-2-sdk",
+        "implementation/thread-context",
+        "implementation/performance-privacy"
+      ]
+    },
+    {
+      "group": "Strategy",
+      "pages": [
+        "strategy/category-definition",
+        "strategy/competitive-landscape",
+        "strategy/go-to-market",
+        "strategy/roadmap",
+        "strategy/risks"
       ]
     }
   ],
   "footerSocials": {
-    "x": "https://x.com/mintlify",
-    "github": "https://github.com/mintlify",
-    "linkedin": "https://www.linkedin.com/company/mintsearch"
+    "github": "https://github.com/dishant0406/whyops",
+    "linkedin": "https://www.linkedin.com/dishant0406"
   }
 }

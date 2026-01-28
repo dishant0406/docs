@@ -1,0 +1,16 @@
+---
+title: Architecture Overview
+description: The high-level system architecture for WhyOps.
+---
+
+WhyOps is designed to reconstruct decision context, not just log events.
+
+Key layers:
+- LLM proxy: captures prompts, tool definitions, responses, and token usage.
+- Tool wrapper: captures execution reality (inputs, outputs, retries, errors, latency).
+- State builder: reconstructs the decision loop and produces a causal graph.
+
+Outcome:
+- A reproducible decision trace.
+- A decision graph UI that reflects the agent topology.
+- A replay engine that reconstructs state for debugging.

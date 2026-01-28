@@ -1,0 +1,23 @@
+---
+title: Metadata Envelope
+description: Thread and step metadata for DAG reconstruction.
+---
+
+Purpose:
+- Create stable links across events.
+
+Example:
+```json
+{
+  "_whyops": {
+    "thread_id": "thread_abc123",
+    "step_id": 4,
+    "parent_step": 3,
+    "span_id": "span_def456"
+  }
+}
+```
+
+Key value:
+- Enables decision graphs instead of linear logs.
+- Preserves causality across tool calls and LLM responses.

@@ -1,0 +1,15 @@
+---
+title: Event Schema Overview
+description: The five canonical event types and their cognitive value.
+---
+
+WhyOps uses event schemas that map to decision boundaries.
+
+Canonical event types:
+- llm_call: what the model saw and produced
+- tool_execution: what actually happened outside the LLM
+- memory_retrieval: which knowledge influenced a decision
+- planner_step: strategy and internal decision state
+- agent_termination: why execution stopped
+
+Each event is linked by thread and step metadata for DAG reconstruction.

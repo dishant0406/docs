@@ -1,0 +1,16 @@
+---
+title: Core System Model
+description: Two layers of reality and the four cognitive boundaries.
+---
+
+Two layers of reality:
+- LLM cognition: visible to a proxy (prompts, tools, responses).
+- Runtime cognition: hidden state in the agent loop (retries, planner state, memory changes).
+
+The four cognitive boundaries:
+1. Planner step: the agent chooses the next action.
+2. Memory retrieval: past information influences the decision.
+3. LLM reasoning: the model generates action or response.
+4. Tool execution: the external world is touched.
+
+WhyOps instruments the boundaries, not framework internals.

@@ -1,0 +1,27 @@
+---
+title: LLM Call Event
+description: Captures prompt context, tools, responses, and usage.
+---
+
+Purpose:
+- Represent what the LLM saw and produced at a step.
+
+Example:
+```json
+{
+  "event": "llm_call",
+  "thread_id": "t1",
+  "model": "gpt-4",
+  "system_prompt": "You are a helpful assistant...",
+  "messages": ["..."],
+  "tools": ["..."],
+  "response": {"...": "..."},
+  "tokens": {"prompt": 1234, "completion": 567, "total": 1801},
+  "latency_ms": 2340,
+  "truncation_occurred": false
+}
+```
+
+Key value:
+- Establishes the LLM cognition boundary.
+- Links tool requests to real tool executions.

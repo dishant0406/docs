@@ -1,0 +1,20 @@
+---
+title: Decision Graph UI
+description: A graph-shaped interface for agent cognition.
+---
+
+Agents are graph systems, not linear logs. The UI should match the system topology.
+
+Graph nodes represent:
+- LLM decisions
+- Tool executions
+- Memory retrievals
+- Planner steps
+- Termination reasons
+
+Edges represent causal influence:
+- Memory -> LLM decision
+- Tool output -> next step
+- Planner state -> action selection
+
+The decision graph is the fastest path to a developer "aha" moment.

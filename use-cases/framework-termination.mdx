@@ -1,0 +1,14 @@
+---
+title: Framework-Driven Termination
+description: When agents stop without model intent.
+---
+
+Scenario:
+- Execution stops due to max iterations, timeout, or token budget.
+
+Why it is hard to debug:
+- Proxy-only logs make it look like the LLM stopped.
+
+WhyOps value:
+- Agent termination events explain the true stop reason.
+- Prevents misattribution to model quality.

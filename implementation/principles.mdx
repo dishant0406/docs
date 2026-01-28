@@ -1,0 +1,21 @@
+---
+title: Implementation Principles
+description: The design rules that keep WhyOps scalable.
+---
+
+Guiding principles:
+- Wrap decision boundaries, not infrastructure.
+- Prefer framework-agnostic instrumentation.
+- Separate adoption (proxy) from accuracy (SDK).
+- Build reconstruction logic from boundary events.
+
+Good targets:
+- memory.retrieve()
+- tool.run()
+- planner.step()
+- llm.call()
+
+Avoid:
+- Deep framework internals
+- Vector database instrumentation
+- Custom adapters for every framework
