@@ -1,0 +1,601 @@
+---
+title: Glossary
+description: Key terms and concepts in agent observability
+---
+
+
+Definitions of important terms, concepts, and abbreviations used throughout WhyOps documentation.
+
+---
+
+## Core Concepts
+
+<AccordionGroup>
+  <Accordion title="Agent Runtime Observability (ARO)">
+    **Definition:** A new category of observability focused on capturing and analyzing the cognitive decision-making processes of autonomous AI agents, beyond just LLM API calls.
+    
+    **Why It Matters:** Traditional observability (logs, traces, metrics) was built for deterministic software. Agents are non-deterministic, stateful, and make autonomous decisions—requiring a fundamentally different observability approach.
+    
+    **Key Components:**
+    - Decision boundary instrumentation
+    - Cognitive state capture
+    - Runtime behavior tracking
+    - Decision environment reconstruction
+    
+    **Example:** Instead of just logging "LLM called tool X," ARO tracks *why* the planner decided to use tool X, what memory influenced the decision, whether retries occurred, and the complete context.
+  </Accordion>
+
+  <Accordion title="Decision Boundary">
+    **Definition:** A point in agent execution where a cognitive decision is made that influences subsequent behavior.
+    
+    **The Four Decision Boundaries:**
+    1. **Planner Step:** Agent chooses next action/strategy
+    2. **Memory Retrieval:** Knowledge is fetched to inform decision
+    3. **LLM Reasoning:** Model generates thoughts/actions
+    4. **Tool Execution:** External world interaction occurs
+    
+    **Why Instrument Boundaries:** These are stable across frameworks and represent universal cognitive moments—making instrumentation framework-agnostic.
+    
+    **Example:** When an agent retrieves documents from a vector database, that's a Memory Retrieval boundary—capturing query, results, scores, and filters reveals *why* certain information influenced the next decision.
+  </Accordion>
+
+  <Accordion title="Decision Graph">
+    **Definition:** A directed acyclic graph (DAG) representing the causal flow of decisions in an agent execution thread.
+    
+    **Structure:**
+    - **Nodes:** Individual cognitive events (planner step, memory retrieval, LLM call, tool execution)
+    - **Edges:** Causal relationships (event A influenced event B)
+    - **Metadata:** Step numbers, timestamps, parent-child relationships
+    
+    **Visual Example:**
+    ```
+    [User Query] 
+        → [Memory Retrieval: 4 docs]
+        → [LLM Call: Choose tool]
+        → [Tool Execution: search_web]
+        → [Tool Retry #1: timeout]
+        → [Tool Retry #2: success]
+        → [LLM Call: Synthesize answer]
+        → [Response]
+    ```
+    
+    **Use Cases:**
+    - Visualize execution flow
+    - Identify bottlenecks
+    - Trace causality
+    - Debug failures
+  </Accordion>
+
+  <Accordion title="State Replay">
+    **Definition:** The ability to recreate the complete decision environment of a production agent failure in a development environment for debugging.
+    
+    **What Gets Replayed:**
+    - LLM prompts and configurations
+    - Memory state (documents, embeddings, scores)
+    - Tool availability and configurations
+    - Planner settings (max steps, timeouts, strategies)
+    - Framework state and environment variables
+    
+    **How It Works:**
+    1. Capture full cognitive state when failure occurs
+    2. Export as sanitized replay package
+    3. Load in local dev environment
+    4. Step through execution with original context
+    
+    **Key Benefit:** Reduces debugging time from hours/days to minutes by making production failures reproducible locally.
+    
+    See: [State Replay Feature](/features/state-replay)
+  </Accordion>
+
+  <Accordion title="Cognitive Boundaries">
+    **Definition:** The conceptual separation between **LLM cognition** (visible in prompts) and **Runtime cognition** (hidden in framework logic).
+    
+    **LLM Cognition:**
+    - System prompts
+    - User messages
+    - Tool definitions
+    - Model responses
+    - ✅ Visible via proxy
+    
+    **Runtime Cognition:**
+    - Silent retries
+    - Memory mutations
+    - Planner state changes
+    - Tool routing overrides
+    - Termination logic
+    - ❌ Invisible to proxy
+    
+    **WhyOps Value:** Captures *both* cognitive layers to show complete decision-making process.
+  </Accordion>
+
+  <Accordion title="Hidden Cognitive Layers">
+    **Definition:** The six categories of agent behavior that occur between LLM calls and are invisible to proxy-based observability tools.
+    
+    **The Six Layers:**
+    1. Silent runtime retries
+    2. Framework tool output sanitization
+    3. Memory mutation outside LLM context
+    4. Early termination logic
+    5. Tool routing overrides
+    6. Retriever cognition (RAG mechanics)
+    
+    **Impact:** These hidden layers account for 30-40% of agent failures but are completely missed by traditional LLM observability tools.
+    
+    See: [Hidden Cognitive Layers](/concepts/hidden-cognition)
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Technical Terms
+
+<AccordionGroup>
+  <Accordion title="Proxy Mode">
+    **Definition:** An integration mode where WhyOps sits as a middleware layer between agent code and LLM providers, requiring minimal code changes.
+    
+    **Setup:**
+    ```python
+    # Change only the base URL
+    openai.api_base = "https://proxy.whyops.ai"
+    ```
+    
+    **Coverage:** ~70-80% of agent cognition
+    
+    **Captures:**
+    - LLM requests/responses
+    - Tool definitions and calls
+    - Token usage and latency
+    - Conversation flow
+    
+    **Misses:**
+    - Silent retries
+    - Memory retrieval details
+    - Planner internal state
+    - Tool execution errors (pre-sanitization)
+    
+    **Best For:** Quick adoption, legacy systems, initial evaluation
+    
+    See: [Proxy Layer Architecture](/architecture/proxy-layer)
+  </Accordion>
+
+  <Accordion title="SDK Mode">
+    **Definition:** An integration mode using instrumentation libraries to capture deep runtime cognition by wrapping tools, memory, and planner functions.
+    
+    **Setup:**
+    ```python
+    from whyops import tool, memory_retrieval
+    
+    @tool
+    def my_tool(args):
+        # tool logic
+        pass
+    
+    @memory_retrieval
+    def get_docs(query):
+        # retrieval logic
+        pass
+    ```
+    
+    **Coverage:** ~95% of agent cognition
+    
+    **Captures Everything Proxy Does, Plus:**
+    - Tool execution reality (retries, raw errors)
+    - Memory retrieval cognition
+    - Planner state transitions
+    - Framework behavior
+    - Termination reasons
+    
+    **Best For:** Production debugging, compliance, power users
+    
+    See: [SDK Layer Architecture](/architecture/sdk-layer)
+  </Accordion>
+
+  <Accordion title="Thread">
+    **Definition:** A single end-to-end agent execution session, from initial user query to final response (or failure).
+    
+    **Structure:**
+    - Unique `thread_id` identifier
+    - Sequence of decision steps
+    - Associated events and metadata
+    - Start and end timestamps
+    - Success/failure status
+    
+    **Example:**
+    ```json
+    {
+      "thread_id": "t_abc123",
+      "started_at": "2026-01-30T10:00:00Z",
+      "ended_at": "2026-01-30T10:00:45Z",
+      "status": "failed",
+      "steps": 7,
+      "events": [...]
+    }
+    ```
+    
+    **Use Case:** Unit of analysis for debugging, replay, and performance tracking
+  </Accordion>
+
+  <Accordion title="Event Schema">
+    **Definition:** The canonical data structure for representing cognitive events in agent execution.
+    
+    **Five Core Event Types:**
+    1. **LLM Call:** Model reasoning boundary
+    2. **Tool Execution:** External action boundary
+    3. **Memory Retrieval:** Knowledge influence boundary
+    4. **Planner Step:** Strategy decision boundary
+    5. **Agent Termination:** Completion/failure boundary
+    
+    **Linking Metadata:**
+    - `thread_id`: Links events to execution session
+    - `step_id`: Sequential step number
+    - `parent_step`: Causality reference
+    - `timestamp`: When event occurred
+    
+    See: [Event Schema Overview](/events/overview)
+  </Accordion>
+
+  <Accordion title="Context Propagation">
+    **Definition:** Automatic passing of thread and step identifiers through the execution stack without manual intervention.
+    
+    **Problem It Solves:**
+    ```python
+    # Without context propagation (manual threading)
+    def tool_a(thread_id, args):
+        whyops.log(thread_id, "tool_a", args)
+        result = call_tool_b(thread_id, args)  # Pass thread_id everywhere
+        return result
+    
+    def call_tool_b(thread_id, args):
+        whyops.log(thread_id, "tool_b", args)  # Repeat boilerplate
+    ```
+    
+    **With Context Propagation:**
+    ```python
+    from whyops import context
+    
+    @tool
+    def tool_a(args):
+        result = call_tool_b(args)  # No thread_id passing
+        return result
+    
+    @tool  
+    def call_tool_b(args):
+        thread_id = context.thread_id()  # Auto-retrieved
+    ```
+    
+    **Implementation:** Thread-local storage or context variables (Python contextvars)
+    
+    See: [Thread Context](/implementation/thread-context)
+  </Accordion>
+
+  <Accordion title="Metadata Envelope">
+    **Definition:** A standardized wrapper structure added to every event for linking and causality tracking.
+    
+    **Structure:**
+    ```json
+    {
+      "_whyops": {
+        "thread_id": "t_abc123",
+        "step_id": 5,
+        "parent_step": 4,
+        "event_type": "tool_execution",
+        "timestamp": "2026-01-30T10:00:15.234Z"
+      },
+      "event_data": {
+        "tool_name": "search_web",
+        "args": {...},
+        "result": {...}
+      }
+    }
+    ```
+    
+    **Purpose:** Enables reconstruction of decision graph from flat event stream
+    
+    See: [Metadata Envelope](/events/metadata-envelope)
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Agent Architecture Terms
+
+<AccordionGroup>
+  <Accordion title="Planner">
+    **Definition:** The component of an agent system responsible for deciding the next action, managing iteration loops, and orchestrating tool use.
+    
+    **Responsibilities:**
+    - Choose next tool to call
+    - Decide when to retry vs give up
+    - Manage max iteration limits
+    - Handle termination conditions
+    - Track task progress
+    
+    **Example Planners:**
+    - LangChain's AgentExecutor
+    - ReAct pattern implementations
+    - Custom loop logic
+    
+    **WhyOps Instrumentation:**
+    ```python
+    whyops.capture_planner_state(
+      thread_id=tid,
+      state={
+        "step": 3,
+        "max_steps": 5,
+        "retry_count": 2,
+        "confidence": 0.41,
+        "strategy": "retry_with_backoff"
+      }
+    )
+    ```
+  </Accordion>
+
+  <Accordion title="Memory System">
+    **Definition:** The component that stores, retrieves, and manages knowledge used by the agent to inform decisions.
+    
+    **Types:**
+    - **Short-term:** Conversation history within current thread
+    - **Long-term:** Persistent knowledge across threads (vector DB)
+    - **Semantic:** Embeddings-based retrieval
+    - **Procedural:** Learned strategies and patterns
+    
+    **WhyOps Focus:** Retrieval events (when memory influences decisions)
+    
+    **Why Storage Isn't Instrumented:**
+    - Storage = data at rest (not cognitive)
+    - Retrieval = data influencing decisions (cognitive)
+    
+    **Instrumentation:**
+    ```python
+    @memory_retrieval
+    def get_relevant_docs(query):
+        docs = vector_db.search(query, top_k=5, threshold=0.8)
+        return docs
+    ```
+  </Accordion>
+
+  <Accordion title="Tool">
+    **Definition:** A function or capability an agent can invoke to interact with external systems or perform actions.
+    
+    **Examples:**
+    - `search_web()` - Query search engines
+    - `query_database()` - Fetch data
+    - `send_email()` - External communication
+    - `execute_code()` - Run computations
+    
+    **Tool Schema:**
+    ```json
+    {
+      "name": "search_web",
+      "description": "Search the internet for information",
+      "parameters": {
+        "query": "string",
+        "max_results": "integer"
+      }
+    }
+    ```
+    
+    **WhyOps Tracking:**
+    - Requested vs actually executed tools
+    - Arguments passed
+    - Execution time
+    - Success/failure/retries
+    - Raw vs sanitized outputs
+  </Accordion>
+
+  <Accordion title="RAG (Retrieval-Augmented Generation)">
+    **Definition:** A pattern where an agent retrieves relevant documents from a knowledge base before generating a response.
+    
+    **RAG Pipeline:**
+    ```
+    User Query
+      → Query Rewriting (optional)
+      → Embedding Generation
+      → Vector Search
+      → Reranking (optional)
+      → Threshold Filtering
+      → Context Injection
+      → LLM Generation
+    ```
+    
+    **Hidden Cognition:** Most steps happen *before* the LLM sees anything
+    
+    **WhyOps Value:** Captures the full RAG pipeline, not just final documents
+    
+    **Common Issues WhyOps Debugs:**
+    - Query rewriting loses important keywords
+    - Threshold too high filters all results
+    - Reranking reorders incorrectly
+    - Top-k too small misses relevant docs
+    
+    See: [RAG Mechanics Use Case](/use-cases/rag-mechanics)
+  </Accordion>
+
+  <Accordion title="Agent Loop / Iteration">
+    **Definition:** The repeating cycle where an agent plans, acts, observes, and decides whether to continue or terminate.
+    
+    **Typical Loop:**
+    ```
+    1. Planner decides next action
+    2. Memory retrieved (if needed)
+    3. LLM generates tool call
+    4. Tool executes
+    5. Result returned to planner
+    6. Check termination conditions
+    7. If not done, goto 1
+    ```
+    
+    **Termination Conditions:**
+    - LLM outputs "DONE" signal
+    - Max iterations reached
+    - Timeout exceeded
+    - Exception occurred
+    - Task marked complete
+    
+    **WhyOps Tracking:** Which condition triggered termination and why
+  </Accordion>
+
+  <Accordion title="Framework Sanitization">
+    **Definition:** When agent frameworks automatically clean, format, or modify tool outputs before sending them to the LLM.
+    
+    **Why It Happens:**
+    - Prevent malformed JSON from breaking parsing
+    - Redact sensitive data
+    - Enforce output schemas
+    - Handle exceptions gracefully
+    
+    **Problem for Debugging:**
+    - You see the cleaned version, not the real error
+    - Root cause is hidden
+    - Similar errors look identical
+    
+    **Example:**
+    ```python
+    # Real tool output
+    "<!DOCTYPE html><body&gt;503 Service Unavailable</body>"
+    
+    # Sanitized version sent to LLM
+    "Tool execution failed: Invalid response format"
+    ```
+    
+    **WhyOps Solution:** Captures both raw and sanitized versions
+    
+    See: [Tool Sanitization Use Case](/use-cases/tool-sanitization)
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Business &amp; Strategy Terms
+
+<AccordionGroup>
+  <Accordion title="Data Moat">
+    **Definition:** A competitive advantage that strengthens over time through accumulated data that makes the product increasingly valuable and difficult to replicate.
+    
+    **WhyOps Data Moat:**
+    1. **Historical Failure Database:** Millions of agent failure patterns
+    2. **Prompt Optimization Intelligence:** What prompt structures work best
+    3. **Tool Performance Baselines:** Expected behavior by tool type
+    4. **Memory Retrieval Patterns:** Optimal configs by domain
+    
+    **Compounding Effect:**
+    - More users → More data
+    - More data → Better pattern matching
+    - Better matching → Faster debugging
+    - Faster debugging → More users (flywheel)
+    
+    **Why It's Defensible:** Competitor with identical tech but no data can't match value
+    
+    See: [Data Moat Deep Dive](/concepts/data-moat)
+  </Accordion>
+
+  <Accordion title="Category Creation">
+    **Definition:** Defining a new market category rather than competing in an existing one.
+    
+    **WhyOps Category:** Agent Runtime Observability (ARO)
+    
+    **Why Not Existing Categories:**
+    - ❌ "LLM Observability" - Too narrow (agents > LLMs)
+    - ❌ "APM for AI" - Wrong mental model
+    - ❌ "Agent Monitoring" - Implies passive watching
+    
+    **Category Insight:**
+    > "Agents aren't unreliable because models are bad—they're un-debuggable because decision state is invisible."
+    
+    **Successful Category Creation Examples:**
+    - Datadog: Modern APM
+    - Twilio: Cloud Communications
+    - Stripe: Developer-first payments
+    
+    See: [Category Definition](/strategy/category-definition)
+  </Accordion>
+
+  <Accordion title="Decision Infrastructure">
+    **Definition:** The foundational layer that enables understanding, debugging, and governing autonomous agent decisions—analogous to how cloud infrastructure enables application deployment.
+    
+    **Infrastructure Layers:**
+    ```
+    Application Code
+        ↓
+    Agent Framework (LangChain, CrewAI)
+        ↓
+    Decision Infrastructure (WhyOps) ← New layer
+        ↓
+    Model Providers (OpenAI, Anthropic)
+    ```
+    
+    **Why "Infrastructure":**
+    - Essential, not optional (for production)
+    - Foundational layer
+    - Network effects
+    - High switching costs
+    - Platform dynamics
+    
+    **Vision:** Every production agent runs through WhyOps, just like every app uses AWS/GCP/Azure
+  </Accordion>
+
+  <Accordion title="Design Partner">
+    **Definition:** Early customer who provides feedback and shapes product direction in exchange for early access and influence.
+    
+    **Ideal WhyOps Design Partner:**
+    - Running production AI agents
+    - Experiencing debugging pain
+    - Technical team that can integrate
+    - Willing to share use cases/feedback
+    - Representative of target customer segment
+    
+    **Benefits:**
+    - Shape roadmap priorities
+    - Early access to platform
+    - Custom integrations if needed
+    - Pricing discounts
+    - Co-marketing opportunities
+    
+    **Commitment:**
+    - Weekly feedback calls
+    - Test beta features
+    - Share metrics (anonymized)
+    - Provide case studies
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Acronyms &amp; Abbreviations
+
+| Acronym | Full Term | Definition |
+|---------|-----------|------------|
+| **ARO** | Agent Runtime Observability | Category WhyOps defines; observability for agent cognition |
+| **DAG** | Directed Acyclic Graph | Structure of decision graphs showing causal flow |
+| **RAG** | Retrieval-Augmented Generation | Pattern of retrieving docs before LLM generation |
+| **LLM** | Large Language Model | AI model used for reasoning (GPT-4, Claude, etc.) |
+| **APM** | Application Performance Monitoring | Traditional observability (Datadog, New Relic) |
+| **SDK** | Software Development Kit | Libraries for instrumenting code |
+| **PII** | Personally Identifiable Information | Sensitive user data requiring protection |
+| **SLA** | Service Level Agreement | Guaranteed uptime/performance contract |
+| **MVP** | Minimum Viable Product | Smallest shippable version |
+| **DX** | Developer Experience | How easy/pleasant it is to use a tool |
+| **TTR** | Time to Resolution | How long it takes to fix an issue |
+| **NPS** | Net Promoter Score | Customer satisfaction metric |
+
+---
+
+## Related Concepts
+
+<CardGroup cols={2}>
+  <Card title="Core System Model" icon="diagram-project" href="/core-model">
+    Understand the four decision boundaries
+  </Card>
+  
+  <Card title="Hidden Cognition" icon="eye-slash" href="/concepts/hidden-cognition">
+    The six layers proxy tools miss
+  </Card>
+  
+  <Card title="Event Schema" icon="code" href="/events/overview">
+    Data structures for cognitive events
+  </Card>
+  
+  <Card title="FAQ" icon="question" href="/resources/faq">
+    Common questions answered
+  </Card>
+</CardGroup>

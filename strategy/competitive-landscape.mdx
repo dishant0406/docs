@@ -1,21 +1,600 @@
 ---
 title: Competitive Landscape
-description: How WhyOps differs from existing observability tools.
+description: How WhyOps compares to existing observability and debugging tools, and why Agent Runtime Observability is a new category
 ---
 
-# Competitive Landscape
 
-| Tool | Focus | WhyOps difference |
-| --- | --- | --- |
-| LangFuse | LLM observability | Agent cognition reconstruction |
-| LangSmith | Prompt debugging | Decision environment capture |
-| Helicone | API monitoring | Runtime state visibility |
-| Datadog | Service APM | Cognition-level tracing |
+WhyOps doesn't compete directly with existing LLM observability tools—it defines a new category by solving a fundamentally different problem.
 
-## Differentiators
+<Callout type="info" title="Category Positioning">
+**Existing Tools:** LLM API observability (what was called, what responded)  
+**WhyOps:** Agent cognition observability (why decisions were made)
 
-- Tool output vs LLM-received output
-- Memory influence mapping
-- Planner state visibility
-- Silent retry detection
-- State replay
+These are complementary, not competitive.
+</Callout>
+
+---
+
+## Competitive Comparison Matrix
+
+| Feature / Capability | LangFuse | LangSmith | Helicone | Datadog APM | **WhyOps** |
+|---------------------|----------|-----------|----------|-------------|-----------|
+| **Primary Focus** | LLM tracing | LangChain debugging | LLM proxy &amp; caching | Service monitoring | Agent cognition |
+| **LLM call logging** | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| **Prompt/response capture** | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **Token usage tracking** | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **Cost monitoring** | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **Basic traces** | ✅ | ✅ | ⚠️ | ✅ | ✅ |
+| **Tool execution reality** | ❌ | ⚠️ | ❌ | ❌ | ✅ |
+| **Silent retry detection** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Memory retrieval tracking** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **RAG pipeline visibility** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Planner state capture** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Framework override detection** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Termination reason tracking** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Decision graph visualization** | ⚠️ | ⚠️ | ❌ | ⚠️ | ✅ |
+| **State Replay** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Reproducible debugging** | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Framework agnostic** | ✅ | ❌ | ✅ | ✅ | ✅ |
+| **Proxy mode** | ❌ | ❌ | ✅ | ❌ | ✅ |
+| **SDK mode** | ✅ | ✅ | ❌ | ✅ | ✅ |
+
+**Legend:**
+- ✅ Full support
+- ⚠️ Partial support
+- ❌ Not supported
+
+---
+
+## Detailed Competitor Analysis
+
+<Tabs>
+  <Tab title="LangFuse">
+    ### LangFuse: LLM Observability Platform
+    
+    **Positioning:** Open-source LLM engineering platform
+    
+    **Strengths:**
+    - ✅ Strong LLM call tracing
+    - ✅ Prompt management and versioning
+    - ✅ User feedback collection
+    - ✅ Cost tracking per user/session
+    - ✅ Open-source (trust + community)
+    - ✅ Self-hosting option
+    
+    **What They Capture:**
+    - LLM requests and responses
+    - Prompt templates and versions
+    - Token usage and costs
+    - User feedback scores
+    - Session-level traces
+    
+    **What They Miss:**
+    - ❌ Tool execution details (only LLM's view)
+    - ❌ Silent framework retries
+    - ❌ Memory retrieval decisions
+    - ❌ Planner strategy changes
+    - ❌ Runtime cognition layer
+    
+    **Use Case Overlap:**
+    - Prompt engineering and versioning
+    - Cost monitoring
+    - Basic LLM debugging
+    
+    **WhyOps Differentiation:**
+    
+    | Scenario | LangFuse Answer | WhyOps Answer |
+    |----------|----------------|---------------|
+    | "Why is my agent slow?" | "LLM call took 8 seconds" | "Tool had 3 hidden retries (5s each), LLM only saw final success" |
+    | "Why wrong answer?" | "Prompt contained these docs" | "Retrieval threshold 0.90 filtered out correct doc (score 0.87), showing why wrong docs were used" |
+    | "Why did it stop?" | "Last LLM message was..." | "Framework hit max_iterations=5, LLM wanted to continue" |
+    
+    **Relationship:** Complementary (can use together)
+    - LangFuse for prompt management + costs
+    - WhyOps for agent cognition + debugging
+  </Tab>
+  
+  <Tab title="LangSmith">
+    ### LangSmith: LangChain Observability
+    
+    **Positioning:** Official observability for LangChain
+    
+    **Strengths:**
+    - ✅ Deep LangChain integration
+    - ✅ Debugging tools for chains
+    - ✅ Playground for testing
+    - ✅ Dataset management for evaluation
+    - ✅ Backed by LangChain (distribution advantage)
+    
+    **What They Capture:**
+    - LangChain component execution
+    - Chain/agent runs
+    - LLM calls within chains
+    - Retriever queries
+    - Custom metadata
+    
+    **What They Miss:**
+    - ❌ Framework-agnostic (LangChain-only)
+    - ❌ Tool execution reality vs LLM perception
+    - ❌ Silent retry mechanisms
+    - ❌ Memory influence patterns
+    - ❌ State replay capability
+    
+    **Use Case Overlap:**
+    - LangChain agent debugging
+    - Chain performance analysis
+    - Development-time testing
+    
+    **WhyOps Differentiation:**
+    
+    | Dimension | LangSmith | WhyOps |
+    |-----------|-----------|--------|
+    | **Framework Support** | LangChain only | Any framework |
+    | **Cognition Depth** | LangChain component level | Decision boundary level |
+    | **Debugging** | View execution logs | Replay production state |
+    | **Tool Visibility** | Tool inputs/outputs from LangChain | Actual execution + retries + sanitization |
+    
+    **Key Wedge:**
+    > "LangSmith shows what LangChain did. WhyOps shows why your agent decided."
+    
+    **Relationship:** Competitive for LangChain users, but:
+    - LangSmith = dev-time debugging
+    - WhyOps = production-grade observability + state replay
+  </Tab>
+  
+  <Tab title="Helicone">
+    ### Helicone: LLM Proxy &amp; Gateway
+    
+    **Positioning:** LLM request proxy with caching and monitoring
+    
+    **Strengths:**
+    - ✅ Zero-code proxy integration (change URL only)
+    - ✅ Multi-provider support (OpenAI, Anthropic, etc.)
+    - ✅ Request caching (cost savings)
+    - ✅ Rate limiting and fallbacks
+    - ✅ Very low friction adoption
+    
+    **What They Capture:**
+    - All LLM API requests (proxy position)
+    - Token usage and costs
+    - Latency metrics
+    - Request/response bodies
+    
+    **What They Miss:**
+    - ❌ Tool execution (happens outside LLM API)
+    - ❌ Memory retrieval cognition
+    - ❌ Planner decisions
+    - ❌ Framework behavior
+    - ❌ Anything not going through LLM API
+    
+    **Use Case Overlap:**
+    - Cost tracking
+    - LLM request logging
+    - Easy integration
+    
+    **WhyOps Differentiation:**
+    
+    | Feature | Helicone | WhyOps Proxy | WhyOps SDK |
+    |---------|----------|--------------|------------|
+    | **Integration** | Change URL | Change URL | Decorators |
+    | **LLM Visibility** | ✅ Full | ✅ Full | ✅ Full |
+    | **Tool Visibility** | ❌ None | ⚠️ LLM-visible only | ✅ Complete |
+    | **Caching** | ✅ Yes | ❌ No (not focus) | ❌ No |
+    | **Decision Graphs** | ❌ No | ✅ Inferred | ✅ Complete |
+    | **State Replay** | ❌ No | ⚠️ Limited | ✅ Full |
+    
+    **Key Wedge:**
+    > "Helicone optimizes LLM calls. WhyOps debugs agent decisions."
+    
+    **Relationship:** Potentially complementary
+    - Helicone for LLM caching + costs
+    - WhyOps for agent debugging
+    - Could integrate (WhyOps proxy → Helicone → LLM provider)
+  </Tab>
+  
+  <Tab title="Datadog / New Relic">
+    ### Traditional APM Tools
+    
+    **Positioning:** Infrastructure &amp; application performance monitoring
+    
+    **Strengths:**
+    - ✅ Enterprise-grade reliability
+    - ✅ Comprehensive service monitoring
+    - ✅ Distributed tracing
+    - ✅ Anomaly detection (data moat)
+    - ✅ Huge install base
+    
+    **What They Capture:**
+    - Service-level metrics
+    - Request traces across services
+    - Database queries
+    - API calls
+    - Infrastructure health
+    
+    **What They Miss:**
+    - ❌ LLM-specific observability
+    - ❌ Prompt/response content
+    - ❌ Agent decision logic
+    - ❌ Cognitive boundaries
+    - ❌ State replay for AI
+    
+    **Why They Haven't Solved This:**
+    - APM mental model doesn't fit agents
+    - Treats LLM as just another API
+    - No agent-specific primitives
+    - Focuses on infrastructure, not cognition
+    
+    **WhyOps Differentiation:**
+    
+    | Aspect | Datadog | WhyOps |
+    |--------|---------|--------|
+    | **Layer** | Infrastructure + Services | Agent Cognition |
+    | **Traces** | Service calls | Decision graphs |
+    | **Replay** | Request replay | Cognitive state replay |
+    | **Debugging** | "Service X is slow" | "Agent chose wrong tool because..." |
+    
+    **Key Insight:**
+    > "You don't debug an agent failure by looking at CPU usage. You need to see the decision context."
+    
+    **Relationship:** Complementary layers
+    - Datadog: Infrastructure health
+    - WhyOps: Agent cognition health
+    - Both needed for production AI systems
+  </Tab>
+</Tabs>
+
+---
+
+## Positioning Summary
+
+<CardGroup cols={2}>
+  <Card title="Not LLM Monitoring" icon="chart-line">
+    **They do:** Track LLM calls, tokens, costs
+    
+    **We do:** Understand why agent decisions happened
+    
+    **Analogy:** They're AWS CloudWatch. We're Chrome DevTools debugger.
+  </Card>
+  
+  <Card title="Not Generic APM" icon="server">
+    **They do:** Monitor service health and performance
+    
+    **We do:** Debug autonomous decision-making systems
+    
+    **Analogy:** They're for infrastructure. We're for cognition.
+  </Card>
+  
+  <Card title="Not Prompt Tools" icon="comment">
+    **They do:** Manage and version prompts
+    
+    **We do:** Show how prompts influenced decisions in context
+    
+    **Analogy:** They're for development. We're for debugging production.
+  </Card>
+  
+  <Card title="We're a New Category" icon="star">
+    **Agent Runtime Observability**
+    
+    Decision infrastructure for autonomous systems
+    
+    **Analogy:** Datadog for agent cognition
+  </Card>
+</CardGroup>
+
+---
+
+## Why Existing Tools Can't Just Add These Features
+
+<AccordionGroup>
+  <Accordion title="1. Wrong Mental Model" icon="brain">
+    **Their Model:** Logging and tracing request/response systems
+    
+    **Agent Reality:** Autonomous cognitive systems with hidden state
+    
+    **Gap:** Can't retrofit agent cognition into APM primitives
+    
+    **Example:**
+    - APM: "API call took 8 seconds"
+    - Needed: "Tool retry #3 failed, framework switched strategies"
+  </Accordion>
+  
+  <Accordion title="2. Missing Instrumentation Points" icon="plug">
+    **What Exists:** LLM API wrappers
+    
+    **What's Needed:** 
+    - Memory retrieval hooks
+    - Planner state capture
+    - Tool execution wrappers
+    - Framework behavior detection
+    
+    **Why Hard:** Requires deep agent framework understanding, not just API logging
+  </Accordion>
+  
+  <Accordion title="3. No State Replay Architecture" icon="clock">
+    **Their Focus:** Real-time monitoring and alerting
+    
+    **Agent Debugging:** Reproducibility of non-deterministic systems
+    
+    **Architecture Gap:**
+    - Current: Append-only logs
+    - Needed: Full environment snapshots + replay engine
+  </Accordion>
+  
+  <Accordion title="4. Different Data Moat" icon="database">
+    **Their Moat:** Service performance baselines, anomaly detection
+    
+    **Agent Moat:** Decision failure patterns, prompt optimization, retrieval strategies
+    
+    **Why Different:** Agent behavior patterns ≠ service performance patterns
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Competitive Advantages (Moats)
+
+<Steps>
+  <Step title="First-Mover Advantage">
+    **Timing:** Agent production deployments accelerating (2025-2026)
+    
+    **Opportunity:** Define category before competition consolidates
+    
+    **Risk Window:** 12-18 months to establish position
+  </Step>
+  
+  <Step title="Framework-Agnostic Design">
+    **Others:** Coupled to specific frameworks (LangSmith → LangChain)
+    
+    **WhyOps:** Universal decision boundaries work with any framework
+    
+    **Moat:** As new frameworks emerge, they work with WhyOps automatically
+  </Step>
+  
+  <Step title="Data Network Effects">
+    **Year 1:** Basic telemetry
+    
+    **Year 2:** Pattern recognition (50K failures)
+    
+    **Year 3:** Predictive insights (1M failures)
+    
+    **Moat:** Failure database makes platform smarter for all users
+    
+    See: [Data Moat Concept](/concepts/data-moat)
+  </Step>
+  
+  <Step title="State Replay as Hook">
+    **Unique Capability:** Only tool that can reproduce production agent failures
+    
+    **Switching Cost:** Historical replay packages only work with WhyOps
+    
+    **Moat:** Once used for critical debugging, hard to leave
+  </Step>
+</Steps>
+
+---
+
+## Go-to-Market Strategy vs Competitors
+
+### How WhyOps Wins Users
+
+<Tabs>
+  <Tab title="vs LangSmith (LangChain Users)">
+    **Wedge:** Framework lock-in concern
+    
+    **Pitch:**
+    > "What happens when you want to try CrewAI or AutoGen? LangSmith only works with LangChain. WhyOps works with everything."
+    
+    **Proof Point:**
+    - Same SDK for LangChain, CrewAI, custom frameworks
+    - No migration needed when switching frameworks
+    
+    **Win Condition:** Teams evaluating multiple frameworks
+  </Tab>
+  
+  <Tab title="vs LangFuse (Cost-Conscious Users)">
+    **Wedge:** Debugging value > monitoring value
+    
+    **Pitch:**
+    > "You're logging prompts and counting tokens. But when agents fail, can you debug them? WhyOps turns failures into reproducible debugging sessions."
+    
+    **Proof Point:**
+    - State Replay demo (production failure → local debug in 5 min)
+    - Case study: Debug time 6 hours → 15 minutes
+    
+    **Win Condition:** Teams with production agent failures
+  </Tab>
+  
+  <Tab title="vs Helicone (Proxy Users)">
+    **Wedge:** Visibility depth
+    
+    **Pitch:**
+    > "Helicone shows LLM calls. WhyOps shows why agents make decisions—including the 40% of behavior that never touches the LLM."
+    
+    **Proof Point:**
+    - Side-by-side: Helicone trace vs WhyOps decision graph
+    - Show silent retries, memory influence, planner state
+    
+    **Win Condition:** Teams debugging complex agent failures
+  </Tab>
+  
+  <Tab title="vs Datadog (Enterprise)">
+    **Wedge:** Cognition layer specialization
+    
+    **Pitch:**
+    > "Datadog monitors your infrastructure. WhyOps debugs your agent cognition. You need both—they're different layers."
+    
+    **Proof Point:**
+    - Datadog alert: "High latency"
+    - WhyOps insight: "3 hidden tool retries caused latency"
+    
+    **Win Condition:** Enterprises with existing APM + new AI agents
+  </Tab>
+</Tabs>
+
+---
+
+## Threat Analysis
+
+| Threat | Likelihood | Mitigation |
+|--------|-----------|------------|
+| **LangSmith goes framework-agnostic** | Medium | First-mover advantage + data moat; we'll have 12-18mo head start |
+| **Datadog builds agent observability** | Medium | Slower to ship (big company); we can partner instead of compete |
+| **LangFuse adds state replay** | Low-Medium | Open-source struggles with complex features; we can acquire if needed |
+| **New well-funded startup** | High | Speed to market critical; data moat compounds quickly |
+| **Anthropic/OpenAI build native tools** | Low | They focus on models, not tooling; opportunity for partnership |
+
+**Biggest Threat:** Well-funded startup with similar vision
+
+**Counter:** Ship fast, collect data, establish category leadership before funding rounds
+
+---
+
+## Pricing Comparison
+
+| Tool | Model | Typical Cost | WhyOps Positioning |
+|------|-------|--------------|-------------------|
+| **LangFuse** | Free (OSS) + Cloud hosting | $0-500/mo | Higher value (debugging > logging) → $500-5K/mo |
+| **LangSmith** | Usage-based (traces) | $100-2K/mo | More expensive but includes state replay → $500-5K/mo |
+| **Helicone** | Free tier + Usage | $0-300/mo | Different value prop (cognition > caching) → $500-5K/mo |
+| **Datadog** | Per host + features | $2K-20K/mo | Complementary layer, not competitive → $500-10K/mo (agents only) |
+
+**WhyOps Pricing Strategy:**
+- **Free:** Dev/testing with proxy mode
+- **Team:** $500-2K/mo usage-based (production agents)
+- **Enterprise:** $5K-20K/mo (on-premise + compliance)
+
+**Key Differentiator:** State Replay justifies premium pricing (10x faster debugging)
+
+---
+
+## The Enterprise Trust Advantage
+
+### How Shadow Telemetry Changes Enterprise Sales
+
+<Callout type="success" title="WhyOps' Secret Weapon for Enterprise">
+**Shadow telemetry architecture eliminates the #1 objection enterprises have about observability tools: production risk.**
+
+Traditional proxies require convincing security teams to route critical traffic through a third-party. WhyOps doesn't—we observe in parallel.
+</Callout>
+
+#### The Trust Comparison
+
+| Security Concern | Inline Proxy Tools | WhyOps Shadow Telemetry |
+|-----------------|-------------------|------------------------|
+| **Can vendor outage break production?** | ✅ Yes (if no fallback) | ❌ No (parallel observation) |
+| **Added latency to user requests?** | ✅ Yes (+10-50ms per call) | ❌ No (0ms, async mirroring) |
+| **Vendor lock-in risk?** | ⚠️ Moderate (critical path dependency) | ❌ None (can disable anytime) |
+| **Trust barrier for security review?** | ✅ High ("route through us") | ❌ Low ("we just observe") |
+| **Time to security approval?** | 4-12 weeks | 1-2 weeks |
+
+#### What This Means in Sales Conversations
+
+**Traditional Proxy Pitch (Helicone, etc.):**
+
+> Customer: "What if your service goes down?"  
+> Vendor: "We have 99.9% uptime and fail-open fallback"  
+> Customer: "That's still a risk we need to evaluate..." [4-week security review begins]
+
+**WhyOps Pitch:**
+
+> Customer: "What if your service goes down?"  
+> WhyOps: "Your AI keeps running. We're not in the request path—we observe in parallel. Even if WhyOps is completely offline, your LLM calls go directly to OpenAI unaffected."  
+> Customer: "Oh, so there's no production dependency?" [Security concern eliminated immediately]
+
+#### Enterprise Adoption Accelerators
+
+<Steps>
+  <Step title="No Production Risk = Faster Procurement">
+    Security teams can approve WhyOps as a "monitoring tool" instead of "infrastructure dependency."
+    
+    **Impact:** Reduces approval cycle from 8-12 weeks → 2-4 weeks
+  </Step>
+  
+  <Step title="Self-Hosted Option for Paranoid Teams">
+    For enterprises with extreme data sovereignty requirements:
+    
+    ```yaml
+    # WhyOps runs entirely in your VPC
+    whyops-edge:
+      image: whyops/edge-telemetry
+      environment:
+        - CLOUD_SYNC=disabled  # Zero data leaves your network
+    ```
+    
+    **Impact:** Unlocks financial services, healthcare, government sectors
+  </Step>
+  
+  <Step title="Start Small, Expand Confidently">
+    Shadow mode lets teams test WhyOps on non-critical agents first, then expand to production with confidence.
+    
+    **Adoption Pattern:**
+    1. Week 1: Deploy on staging agents (prove value)
+    2. Week 2: Deploy on internal tools (build confidence)
+    3. Week 3: Deploy on production (after seeing zero impact)
+    
+    **Impact:** Removes "big bang" deployment risk
+  </Step>
+</Steps>
+
+#### Competitive Wedge: "Production Safe by Design"
+
+**Marketing Angle:**
+
+> "Other observability tools ask you to trust them with your production traffic. WhyOps is designed so you don't have to."
+
+**Sales Battle Card:**
+
+| Objection | Competitor Response | WhyOps Response |
+|-----------|-------------------|----------------|
+| "We can't route production traffic through you" | "We have high uptime and SLAs" | "You don't need to. We observe in parallel—your traffic goes directly to OpenAI" |
+| "What's your uptime guarantee?" | "99.9% with automatic failover" | "Doesn't matter. Even 0% WhyOps uptime = 100% your AI uptime" |
+| "This adds latency" | "Only 10-30ms" | "Zero. We mirror async after your user gets the response" |
+| "Security review will take months" | "We'll work with your team" | "We're observability, not a gateway. Usually approved in 1-2 weeks" |
+
+---
+
+## Summary: Competitive Positioning
+
+<Callout type="success" title="WhyOps is Not a Better Version of Existing Tools">
+**We're creating a new category: Agent Runtime Observability**
+
+- LangFuse/LangSmith = LLM call logging
+- Helicone = LLM proxy &amp; caching
+- Datadog = Infrastructure monitoring
+- **WhyOps = Agent cognition debugging**
+
+These are complementary layers in the AI stack.
+</Callout>
+
+### The One-Liner Positioning
+
+**Against LangFuse:** "You log prompts. We debug decisions."
+
+**Against LangSmith:** "You monitor LangChain. We understand any agent."
+
+**Against Helicone:** "You cache LLM calls. We replay agent cognition."
+
+**Against Datadog:** "You monitor infrastructure. We debug agent behavior."
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Category Definition" icon="flag" href="/strategy/category-definition">
+    Why Agent Runtime Observability is a new category
+  </Card>
+  
+  <Card title="Go-to-Market Strategy" icon="rocket" href="/strategy/go-to-market">
+    How we'll win users from competitors
+  </Card>
+  
+  <Card title="Data Moat" icon="database" href="/concepts/data-moat">
+    Our long-term competitive advantage
+  </Card>
+  
+  <Card title="Roadmap" icon="map" href="/strategy/roadmap">
+    How we'll ship before competitors catch up
+  </Card>
+</CardGroup>
+

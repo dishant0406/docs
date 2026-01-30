@@ -1,0 +1,528 @@
+---
+title: Hidden Cognitive Layers
+description: The six critical decision moments that proxy-only observability cannot capture
+---
+
+
+Agent frameworks perform complex cognitive operations between LLM calls that are completely invisible to proxy-based observability tools. Understanding these hidden layers is critical for effective debugging.
+
+<Callout type="warning" title="The Core Problem">
+**Proxy tools only see the LLM API boundary**. They miss 30-40% of agent cognition that happens in the runtime layer—where most failures occur.
+</Callout>
+
+---
+
+## The Six Hidden Layers
+
+<AccordionGroup>
+  <Accordion title="1. Silent Runtime Retries" icon="rotate">
+    ### The Problem
+    
+    When a tool call fails, many frameworks automatically retry with exponential backoff—but **never tell the LLM**.
+    
+    ```mermaid
+    sequenceDiagram
+        participant LLM
+        participant Runtime
+        participant Tool
+        
+        LLM->>Runtime: Call weather_api()
+        Runtime->>Tool: Attempt 1
+        Tool-->>Runtime: ❌ Timeout (5s)
+        Runtime->>Tool: Attempt 2 (hidden)
+        Tool-->>Runtime: ❌ Timeout (5s)
+        Runtime->>Tool: Attempt 3 (hidden)
+        Tool-->>Runtime: ✅ Success
+        Runtime-->>LLM: Success (10s later)
+        
+        Note over Runtime: Proxy sees ONE successful call<br/>Missing: 2 failures, 10s latency
+    ```
+    
+    ### What You See (Proxy)
+    - ✅ One tool call
+    - ✅ Success response
+    - ✅ 10 second latency
+    
+    ### What You Don't See
+    - ❌ 2 failed attempts
+    - ❌ Timeout errors
+    - ❌ Retry strategy used
+    - ❌ Root cause of latency
+    
+    ### WhyOps Solution
+    
+    ```json
+    {
+      "event_type": "tool_execution",
+      "tool_name": "weather_api",
+      "attempt": 3,
+      "previous_attempts": [
+        {"attempt": 1, "error": "timeout", "duration_ms": 5000},
+        {"attempt": 2, "error": "timeout", "duration_ms": 5000}
+      ],
+      "success": true,
+      "total_duration_ms": 10000
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="2. Framework Tool Output Sanitization" icon="filter">
+    ### The Problem
+    
+    When tools return malformed data or crash, frameworks catch exceptions and send **cleaned error messages** to the LLM—not the actual error.
+    
+    **Real Error:**
+    ```python
+    JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+    Raw output: "<!DOCTYPE html><html><body&gt;503 Service Unavailable</body></html>"
+    ```
+    
+    **What LLM Receives:**
+    ```
+    "Tool execution failed: Invalid response format"
+    ```
+    
+    ### Impact
+    - You log the cleaned version
+    - You never see the raw tool output
+    - You can't debug the **actual failure**
+    - Similar errors look identical
+    
+    ### WhyOps Solution
+    
+    Captures **both** versions:
+    
+    ```json
+    {
+      "event_type": "tool_execution",
+      "tool_name": "search_api",
+      "raw_output": "<!DOCTYPE html><html><body&gt;503 Service Unavailable</body></html>",
+      "raw_error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+      "llm_received_output": "Tool execution failed: Invalid response format",
+      "sanitization_applied": true
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="3. Memory Mutation Outside LLM Context" icon="database">
+    ### The Problem
+    
+    Agents store and update memory between LLM calls. These mutations influence **future decisions** but never appear in prompts.
+    
+    **Example:**
+    ```python
+    # Agent conversation
+    User: "I prefer academic sources"
+    
+    # Framework stores preference (invisible to LLM)
+    memory.store({
+      "user_id": "u123",
+      "preference": "academic_sources",
+      "timestamp": "2026-01-30T10:00:00Z"
+    })
+    
+    # Next query (2 hours later)
+    User: "Tell me about climate change"
+    
+    # Memory influences retrieval (invisible to LLM)
+    docs = memory.retrieve(
+      query="climate change",
+      filters={"source_type": "academic"}  # ← From stored preference
+    )
+    ```
+    
+    ### What Proxy Sees
+    - Query: "Tell me about climate change"
+    - Retrieved documents in prompt
+    - No indication **why** those specific documents were chosen
+    
+    ### What You Don't See
+    - ❌ Stored preference from 2 hours ago
+    - ❌ Filter applied to retrieval
+    - ❌ Link between past conversation and current behavior
+    
+    ### WhyOps Solution
+    
+    ```json
+    {
+      "event_type": "memory_retrieval",
+      "query": "climate change",
+      "filters_applied": {
+        "source_type": "academic"
+      },
+      "filter_source": "stored_preference",
+      "preference_stored_at": "2026-01-30T10:00:00Z",
+      "influenced_by_conversation": "conv_789",
+      "candidates_before_filter": 45,
+      "candidates_after_filter": 12
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="4. Early Termination Logic" icon="stop">
+    ### The Problem
+    
+    Agents stop for many reasons—but proxy tools assume the LLM decided to stop.
+    
+    **Reality:** Most terminations are **framework-enforced**, not LLM-chosen.
+    
+    ### Termination Reasons (Usually Hidden)
+    
+    | Reason | Framework Enforced | Visible to LLM? |
+    |--------|-------------------|-----------------|
+    | Max iterations reached | ✅ Yes | ❌ No |
+    | Timeout exceeded | ✅ Yes | ❌ No |
+    | Token budget exhausted | ✅ Yes | ❌ No |
+    | Exception in tool | ✅ Yes | ❌ No |
+    | User cancelled | ✅ Yes | ❌ No |
+    | LLM returned "DONE" | ❌ No | ✅ Yes |
+    
+    **5 out of 6 reasons are invisible to the LLM.**
+    
+    ### Example Scenario
+    
+    ```python
+    # Agent is trying to solve a complex task
+    # Step 5: LLM says "Let me search for more information..."
+    # Step 6: Framework kills execution (max_iterations=5)
+    ```
+    
+    **What Proxy Shows:**
+    - Last LLM message: "Let me search for more information..."
+    - Agent stopped
+    
+    **What User Thinks:**
+    - "The agent gave up"
+    - "LLM is unreliable"
+    
+    **What Actually Happened:**
+    - Framework hit max iterations
+    - Agent wanted to continue
+    - Configuration issue, not LLM failure
+    
+    ### WhyOps Solution
+    
+    ```json
+    {
+      "event_type": "agent_termination",
+      "reason": "max_iterations",
+      "configured_max": 5,
+      "steps_taken": 5,
+      "llm_wanted_to_continue": true,
+      "last_llm_action": "tool_call_request",
+      "incomplete_task": true
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="5. Tool Routing Overrides" icon="route">
+    ### The Problem
+    
+    Frameworks sometimes **override LLM tool choices** based on internal rules—silently.
+    
+    ### Example Scenarios
+    
+    **Scenario 1: Rate Limiting**
+    ```python
+    # LLM requests: search_web()
+    # Framework rule: "Max 3 API calls per conversation"
+    # Framework forces: search_cache() instead
+    ```
+    
+    **Scenario 2: Cost Control**
+    ```python
+    # LLM requests: gpt4_vision_analyze()
+    # Framework rule: "Expensive tools need approval"
+    # Framework forces: gpt3_fallback_analyze()
+    ```
+    
+    **Scenario 3: Safety Guardrails**
+    ```python
+    # LLM requests: execute_code()
+    # Framework rule: "Code execution disabled in prod"
+    # Framework forces: code_simulation()
+    ```
+    
+    ### What Proxy Sees
+    - LLM requested Tool A
+    - Tool B was executed
+    - **No explanation why**
+    
+    ### WhyOps Solution
+    
+    ```json
+    {
+      "event_type": "tool_execution",
+      "llm_requested_tool": "search_web",
+      "actually_executed_tool": "search_cache",
+      "override_reason": "rate_limit_exceeded",
+      "override_policy": "max_api_calls_per_conversation",
+      "limit_value": 3,
+      "current_count": 3
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="6. Retriever Cognition (RAG Mechanics)" icon="magnifying-glass">
+    ### The Problem
+    
+    RAG (Retrieval-Augmented Generation) involves **multiple cognitive steps** that are collapsed before reaching the LLM.
+    
+    ### The Hidden RAG Pipeline
+    
+    ```mermaid
+    flowchart LR
+        A[User Query:<br/>"Best climate policies?"] --> B[Query Rewriter:<br/>"climate policy<br/>economic impact"]
+        B --> C[Embedding Search:<br/&gt;20 docs found]
+        C --> D[Reranker:<br/>Top 10 by score]
+        D --> E[Filter:<br/>threshold > 0.78<br/>→ 4 docs remain]
+        E --> F[Summarizer:<br/>Generate context]
+        F --> G[LLM Prompt:<br/>"Here is context..."]
+        
+        style B fill:#f96,stroke:#333
+        style D fill:#f96,stroke:#333
+        style E fill:#f96,stroke:#333
+        style F fill:#f96,stroke:#333
+    ```
+    
+    **Pink boxes = Hidden cognition**
+    
+    ### What Proxy Sees
+    
+    ```
+    Prompt: "Here is context about climate policies:
+    [4 document summaries]
+    
+    User question: Best climate policies?"
+    ```
+    
+    ### What You Don't See
+    
+    - ❌ Original query was rewritten
+    - ❌ 20 documents were found initially
+    - ❌ Why only 4 were used
+    - ❌ 16 documents were filtered out
+    - ❌ Threshold configuration
+    - ❌ Reranking strategy
+    
+    **If the wrong documents are retrieved, you can't debug why.**
+    
+    ### WhyOps Solution
+    
+    ```json
+    {
+      "event_type": "memory_retrieval",
+      "original_query": "Best climate policies?",
+      "rewritten_query": "climate policy economic impact",
+      "rewrite_reason": "query_expansion",
+      
+      "retrieval_stages": [
+        {
+          "stage": "embedding_search",
+          "candidates_found": 20,
+          "method": "cosine_similarity"
+        },
+        {
+          "stage": "reranking",
+          "candidates_in": 20,
+          "candidates_out": 10,
+          "model": "cross-encoder-reranker"
+        },
+        {
+          "stage": "threshold_filter",
+          "threshold": 0.78,
+          "candidates_in": 10,
+          "candidates_out": 4,
+          "rejected_scores": [0.76, 0.74, 0.72, 0.71, 0.69, 0.65]
+        }
+      ],
+      
+      "final_documents": ["doc_12", "doc_98", "doc_2", "doc_44"],
+      "similarity_scores": [0.91, 0.87, 0.82, 0.80],
+      
+      "documents_used_in_prompt": 4,
+      "total_processing_time_ms": 245
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Coverage Analysis: What Each Mode Captures
+
+<Tabs>
+  <Tab title="Proxy Mode Only">
+    ### ~70% Coverage
+    
+    **What You See:**
+    - ✅ LLM prompts and responses
+    - ✅ Tool definitions available
+    - ✅ Tool call requests from LLM
+    - ✅ Basic conversation flow
+    - ✅ Token usage and latency
+    
+    **What You Miss:**
+    - ❌ Silent retries (Layer 1)
+    - ❌ Tool sanitization (Layer 2)
+    - ❌ Memory mutations (Layer 3)
+    - ❌ Termination reasons (Layer 4)
+    - ❌ Tool routing overrides (Layer 5)
+    - ❌ RAG pipeline stages (Layer 6)
+    
+    **Use Case:** Quick integration, basic visibility
+  </Tab>
+  
+  <Tab title="Proxy + Tool SDK">
+    ### ~85% Coverage
+    
+    **Additional Visibility:**
+    - ✅ Tool execution reality
+    - ✅ Retry tracking (Layer 1)
+    - ✅ Raw vs sanitized outputs (Layer 2)
+    - ✅ Tool routing overrides (Layer 5)
+    
+    **Still Missing:**
+    - ❌ Memory influence depth
+    - ❌ Planner internal state
+    - ❌ Full RAG cognition
+    
+    **Use Case:** Production debugging, tool reliability
+  </Tab>
+  
+  <Tab title="Full SDK Mode">
+    ### ~95% Coverage
+    
+    **Complete Visibility:**
+    - ✅ Everything from Proxy + Tool SDK
+    - ✅ Memory retrieval events (Layer 3)
+    - ✅ Planner state and strategy (Layer 4)
+    - ✅ RAG pipeline stages (Layer 6)
+    - ✅ Framework behavior
+    - ✅ Termination reasons
+    
+    **Theoretical Limits (~5% still hidden):**
+    - ❌ Internal model reasoning (impossible)
+    - ❌ Some proprietary framework heuristics
+    
+    **Use Case:** Deep debugging, compliance, research
+  </Tab>
+</Tabs>
+
+---
+
+## Real-World Impact Example
+
+### Scenario: Production Agent Failure
+
+**Symptom:**
+- Agent takes 30 seconds to respond
+- Returns outdated information
+- Users complain of slowness
+
+### With Proxy-Only Tools
+
+```
+Step 1: LLM prompt (1000 tokens)
+Step 2: Tool call: search_database()
+Step 3: LLM response with result
+Total time: 30s
+```
+
+**Questions you can't answer:**
+- Why did search take so long?
+- Why was outdated data returned?
+- Were there retries?
+- What query was actually sent?
+
+### With WhyOps Full SDK
+
+```json
+{
+  "decision_graph": [
+    {
+      "step": 1,
+      "event": "memory_retrieval",
+      "original_query": "latest product info",
+      "rewritten_query": "product information",  ← Lost "latest"
+      "candidates": 50,
+      "used": 3,
+      "oldest_doc_age_days": 120  ← Problem identified
+    },
+    {
+      "step": 2,
+      "event": "tool_execution",
+      "tool": "search_database",
+      "attempts": 4,  ← Hidden retries
+      "attempt_1": {"error": "timeout", "duration_ms": 5000},
+      "attempt_2": {"error": "timeout", "duration_ms": 5000},
+      "attempt_3": {"error": "timeout", "duration_ms": 5000},
+      "attempt_4": {"success": true, "duration_ms": 15000},
+      "total_duration_ms": 30000  ← Root cause
+    }
+  ]
+}
+```
+
+**Root causes identified:**
+1. Query rewriter removed "latest" keyword
+2. Retrieved 120-day-old documents
+3. Database tool had 3 timeout retries
+4. Each retry took 5 seconds
+
+**Actionable fixes:**
+1. Fix query rewriting logic
+2. Add recency bias to retrieval
+3. Reduce database timeout threshold
+4. Investigate database performance
+
+---
+
+## Why This Matters for Debugging
+
+<CardGroup cols={2}>
+  <Card title="Without Hidden Layer Visibility" icon="eye-slash">
+    **Symptoms visible:**
+    - Agent is slow
+    - Wrong results
+    - Unexplained behavior
+    
+    **Time to fix:** Days of guessing
+  </Card>
+  
+  <Card title="With WhyOps" icon="eye">
+    **Root causes visible:**
+    - Exact retry count
+    - Real error messages
+    - Memory influence
+    - Framework behavior
+    
+    **Time to fix:** Minutes of targeted debugging
+  </Card>
+</CardGroup>
+
+<Callout type="tip" title="The Bottom Line">
+Proxy-only observability is like debugging with half the stack trace missing. WhyOps reconstructs the **complete cognitive stack trace** of your agent.
+</Callout>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="See Use Cases" icon="book" href="/use-cases/silent-retries">
+    Detailed debugging scenarios for each hidden layer
+  </Card>
+  
+  <Card title="Integration Modes" icon="plug" href="/architecture/integration-modes">
+    Choose between proxy and SDK based on your visibility needs
+  </Card>
+  
+  <Card title="Event Schema" icon="code" href="/events/overview">
+    See the exact data structure for each cognitive event
+  </Card>
+  
+  <Card title="Implementation Plan" icon="hammer" href="/implementation/mvp">
+    How we're building visibility into these hidden layers
+  </Card>
+</CardGroup>

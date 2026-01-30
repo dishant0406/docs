@@ -27,19 +27,33 @@
   },
   "navigation": [
     {
-      "group": "Get Started",
+      "group": "Getting Started",
       "pages": [
         "introduction",
         "status",
         "problem-space",
-        "positioning",
-        "core-model"
+        "core-model",
+        "positioning"
+      ]
+    },
+    {
+      "group": "Core Concepts",
+      "pages": [
+        "concepts/hidden-cognition",
+        "concepts/data-moat"
+      ]
+    },
+    {
+      "group": "Product Features",
+      "pages": [
+        "features/state-replay"
       ]
     },
     {
       "group": "Architecture",
       "pages": [
         "architecture/overview",
+        "architecture/shadow-telemetry",
         "architecture/integration-modes",
         "architecture/proxy-layer",
         "architecture/sdk-layer",
@@ -71,7 +85,7 @@
       ]
     },
     {
-      "group": "Implementation Plan",
+      "group": "Implementation",
       "pages": [
         "implementation/principles",
         "implementation/mvp",
@@ -82,13 +96,20 @@
       ]
     },
     {
-      "group": "Strategy",
+      "group": "Strategy & Business",
       "pages": [
         "strategy/category-definition",
         "strategy/competitive-landscape",
         "strategy/go-to-market",
         "strategy/roadmap",
         "strategy/risks"
+      ]
+    },
+    {
+      "group": "Resources",
+      "pages": [
+        "resources/faq",
+        "resources/glossary"
       ]
     }
   ],

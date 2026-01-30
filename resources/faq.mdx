@@ -1,0 +1,640 @@
+---
+title: FAQ
+description: Frequently asked questions about WhyOps
+---
+
+
+Common questions about WhyOps Agent Runtime Observability platform.
+
+---
+
+## General Questions
+
+<AccordionGroup>
+  <Accordion title="What is WhyOps?" icon="question">
+    WhyOps is an **Agent Runtime Observability** platform that captures the complete decision-making process of AI agents—not just their inputs and outputs.
+    
+    Unlike traditional observability tools that only log LLM API calls, WhyOps instruments the four cognitive boundaries where agents make decisions:
+    - Planner steps (strategy decisions)
+    - Memory retrievals (knowledge influence)
+    - LLM reasoning (model outputs)
+    - Tool executions (external actions)
+    
+    This enables you to understand **why** an agent made a specific decision, not just **what** it did.
+  </Accordion>
+
+  <Accordion title="How is WhyOps different from LangSmith/Langfuse/Helicone?" icon="code-compare">
+    **Current Tools (LangSmith, Langfuse, Helicone):**
+    - Focus: LLM API observability
+    - Capture: Prompts, completions, token usage
+    - Visibility: ~70% of agent behavior
+    - Use case: Tracking LLM calls and costs
+    
+    **WhyOps:**
+    - Focus: Agent cognition observability
+    - Capture: Decision environment, runtime state, cognitive boundaries
+    - Visibility: ~95% of agent behavior
+    - Use case: Understanding why decisions were made + reproducible debugging
+    
+    **Key Differentiators:**
+    - ✅ Tool execution reality (not just requests)
+    - ✅ Memory retrieval influence
+    - ✅ Planner internal state
+    - ✅ Silent retry tracking
+    - ✅ **State Replay** for debugging
+    
+    See [Competitive Landscape](/strategy/competitive-landscape) for detailed comparison.
+  </Accordion>
+
+  <Accordion title="Is WhyOps available now?" icon="calendar">
+    **No, WhyOps is currently in design/architecture phase.**
+    
+    This documentation represents:
+    - Complete system architecture
+    - Event schema definitions
+    - Integration patterns
+    - Implementation roadmap
+    
+    **Status:** Conceptual design complete, implementation not started
+    
+    See [Product Status](/status) for current state and [Roadmap](/strategy/roadmap) for timeline.
+  </Accordion>
+
+  <Accordion title="Why should I care if it's not shipped yet?" icon="lightbulb">
+    This documentation serves multiple purposes:
+    
+    **For Engineers:**
+    - Reference architecture for building similar systems
+    - Understanding of agent observability challenges
+    - Event schema design patterns
+    
+    **For Founders/Investors:**
+    - Market gap analysis
+    - Category definition insights
+    - Go-to-market strategy
+    - Data moat thesis
+    
+    **For Future Users:**
+    - Understand the problem WhyOps solves
+    - Evaluate fit for your use case
+    - Provide early feedback on design
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Technical Questions
+
+<AccordionGroup>
+  <Accordion title="What agent frameworks does WhyOps support?" icon="cubes">
+    **Framework-Agnostic by Design**
+    
+    WhyOps instruments **universal decision boundaries** instead of framework-specific APIs:
+    
+    | Boundary | How We Capture | Framework-Independent? |
+    |----------|---------------|------------------------|
+    | LLM calls | Proxy or SDK wrapper | ✅ Yes |
+    | Tool execution | Function decorator | ✅ Yes |
+    | Memory retrieval | Retrieval hook | ✅ Yes |
+    | Planner steps | State snapshot | ⚠️ Partial |
+    
+    **Supported Frameworks (planned):**
+    - LangChain / LangGraph
+    - CrewAI
+    - AutoGen
+    - Custom agent implementations
+    - Any framework that uses Python functions
+    
+    See [Architecture Principles](/implementation/principles) for design philosophy.
+  </Accordion>
+
+  <Accordion title="How does the Proxy mode work?" icon="network-wired">
+    **Proxy Mode** = Minimal integration, ~70-80% visibility
+    
+    ```mermaid
+    flowchart LR
+        A[Your Agent Code] -->|LLM Requests| B[WhyOps Proxy]
+        B -->|Forwarded| C[OpenAI/Anthropic/etc]
+        C -->|Responses| B
+        B -->|Logged + Forwarded| A
+    ```
+    
+    **Setup:**
+    ```python
+    # Change only this line:
+    # Before
+    openai.api_base = "https://api.openai.com"
+    
+    # After
+    openai.api_base = "https://proxy.whyops.ai"
+    ```
+    
+    **What Proxy Captures:**
+    - ✅ All LLM requests/responses
+    - ✅ Tool definitions in prompts
+    - ✅ Tool call requests from LLM
+    - ✅ Tool results sent back to LLM
+    - ✅ Token usage and latency
+    - ✅ Conversation flow
+    
+    **What Proxy Misses:**
+    - ❌ Silent retries in framework
+    - ❌ Tool execution errors (sanitized by framework)
+    - ❌ Memory retrieval details
+    - ❌ Planner internal state
+    
+    See [Proxy Architecture](/architecture/proxy-layer) for details.
+  </Accordion>
+
+  <Accordion title="How does the SDK mode work?" icon="code">
+    **SDK Mode** = Deeper integration, ~95% visibility
+    
+    **Installation:**
+    ```bash
+    pip install whyops  # (future)
+    ```
+    
+    **Tool Instrumentation:**
+    ```python
+    from whyops import tool
+    
+    @tool
+    def search_database(query: str):
+        # Your tool logic
+        results = db.query(query)
+        return results
+    
+    # WhyOps automatically captures:
+    # - Function args
+    # - Execution time
+    # - Return value
+    # - Exceptions/retries
+    # - Thread context
+    ```
+    
+    **Memory Instrumentation:**
+    ```python
+    from whyops import memory_retrieval
+    
+    @memory_retrieval
+    def get_relevant_docs(query: str):
+        # Your retrieval logic
+        docs = vector_db.search(query, top_k=5)
+        return docs
+    
+    # WhyOps automatically captures:
+    # - Query text
+    # - Candidates found
+    # - Similarity scores
+    # - Filter config
+    # - Documents used
+    ```
+    
+    **Context Propagation (Automatic):**
+    ```python
+    # No manual thread_id passing needed
+    from whyops import context
+    
+    thread_id = context.thread_id()  # Auto-retrieved
+    ```
+    
+    See [SDK Architecture](/architecture/sdk-layer) for details.
+  </Accordion>
+
+  <Accordion title="What is State Replay and how does it work?" icon="clock-rotate-left">
+    **State Replay** = Reproduce production failures in development
+    
+    **The Problem:**
+    - Agent fails in production
+    - Can't reproduce locally
+    - Logs don't show enough context
+    
+    **WhyOps Solution:**
+    1. Capture complete decision environment when failure occurs
+    2. Export as replay package
+    3. Load in local dev environment
+    4. Step through execution with full context
+    
+    **Example:**
+    ```python
+    # Load production failure locally
+    from whyops import replay
+    
+    session = replay.load("prod_failure_47293.json")
+    
+    # Inspect state at failure point
+    session.step_to(5)  # Step where it failed
+    session.inspect_memory()  # See what docs were retrieved
+    session.inspect_tools()   # See what tools were available
+    
+    # Test hypothesis
+    session.override_config({"threshold": 0.7})
+    result = session.replay_from_step(3)
+    ```
+    
+    **Typical Time Savings:** 4-6 hours → 15 minutes
+    
+    See [State Replay Feature](/features/state-replay) for comprehensive guide.
+  </Accordion>
+
+  <Accordion title="How do you handle privacy and sensitive data?" icon="shield">
+    **Privacy-First Design**
+    
+    | Data Type | Storage | Used For |
+    |-----------|---------|----------|
+    | LLM prompts/responses | Customer-controlled | Decision graphs |
+    | Tool inputs/outputs | Sanitized or local-only | Execution traces |
+    | Memory content | Hashed signatures only | Retrieval patterns |
+    | Failure patterns | Anonymized aggregates | Pattern matching |
+    | User data | Never stored | N/A |
+    
+    **Options:**
+    - **Cloud Mode:** Encrypted storage, automatic PII redaction
+    - **On-Premise Mode:** All data stays in your infrastructure
+    - **Local-Only Mode:** No data leaves your environment
+    
+    **State Replay Privacy:**
+    - Automatically redacts PII in replay packages
+    - User controls what's included
+    - Supports anonymized/synthetic data substitution
+    
+    See [Performance &amp; Privacy](/implementation/performance-privacy) for details.
+  </Accordion>
+
+  <Accordion title="What's the performance overhead?" icon="gauge">
+    **Design Goal:** &lt;5% latency overhead
+    
+    **Proxy Mode Overhead:**
+    - Network: ~10-20ms (proxy hop)
+    - Processing: ~5-15ms (event logging)
+    - **Total:** ~15-35ms per LLM call
+    
+    **SDK Mode Overhead:**
+    - Tool wrapper: ~2-5ms per call
+    - Memory hook: ~3-8ms per retrieval
+    - Event serialization: ~5-10ms (async)
+    - **Total:** ~10-23ms per instrumented operation
+    
+    **Optimizations:**
+    - Async event logging (non-blocking)
+    - Local buffering with batch uploads
+    - Sampling for high-volume agents
+    - Configurable verbosity levels
+    
+    See [Performance Considerations](/implementation/performance-privacy) for benchmarks.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Use Case Questions
+
+<AccordionGroup>
+  <Accordion title="When should I use WhyOps?" icon="lightbulb">
+    **Ideal Use Cases:**
+    
+    ✅ **Production Agent Debugging**
+    - Agent behaves unexpectedly
+    - Failures are hard to reproduce
+    - Need root cause analysis fast
+    
+    ✅ **Agent Reliability Improvement**
+    - Track down flaky behavior
+    - Understand tool failure patterns
+    - Optimize memory retrieval
+    
+    ✅ **Compliance &amp; Auditability**
+    - Explain agent decisions to stakeholders
+    - Regulatory requirements for AI systems
+    - Decision audit trails
+    
+    ✅ **Agent Development &amp; Testing**
+    - Validate agent behavior in staging
+    - Compare decision quality across versions
+    - Catch issues before production
+    
+    **Not Ideal For:**
+    ❌ Simple LLM wrappers (non-agentic)
+    ❌ Cost-only tracking (use Helicone instead)
+    ❌ Prompt engineering for single calls (use LangSmith)
+  </Accordion>
+
+  <Accordion title="Can WhyOps help with agent hallucinations?" icon="brain">
+    **Yes, by revealing the cognitive context**
+    
+    **How Hallucinations Happen:**
+    1. Relevant information exists in vector DB
+    2. Retrieval fails to surface it (threshold too high, poor query rewriting)
+    3. LLM generates answer without context
+    4. Result: Hallucination
+    
+    **How WhyOps Helps:**
+    
+    ```json
+    {
+      "step": 2,
+      "event": "memory_retrieval",
+      "query": "company refund policy",
+      "candidates_found": 15,
+      "similarity_scores": [0.76, 0.74, 0.72, ...],
+      "threshold": 0.80,  ← Too high!
+      "candidates_used": 0,  ← Nothing passed threshold
+      "result": "No relevant documents found"
+    }
+    ```
+    
+    **Root Cause Identified:**
+    - Threshold of 0.80 filtered out all 15 relevant documents
+    - Best match was 0.76 (very close!)
+    - LLM had to answer without context
+    
+    **Fix:** Lower threshold to 0.70 → retrieval works → hallucination eliminated
+    
+    See [RAG Mechanics Use Case](/use-cases/rag-mechanics) for more.
+  </Accordion>
+
+  <Accordion title="How does WhyOps help with tool retry issues?" icon="rotate">
+    **Exposes Hidden Retry Logic**
+    
+    **Common Scenario:**
+    - Tool call takes 15 seconds
+    - User sees "success"
+    - No indication of problems
+    - Production has random slowdowns
+    
+    **WhyOps Reveals:**
+    ```json
+    {
+      "event": "tool_execution",
+      "tool": "search_api",
+      "total_duration_ms": 15000,
+      "attempts": [
+        {"attempt": 1, "error": "timeout", "duration_ms": 5000},
+        {"attempt": 2, "error": "timeout", "duration_ms": 5000},
+        {"attempt": 3, "success": true, "duration_ms": 5000}
+      ],
+      "llm_received": "Success"  ← LLM never saw failures
+    }
+    ```
+    
+    **Actionable Insights:**
+    - 2 hidden timeouts causing latency
+    - Success rate is actually 33%, not 100%
+    - Need to investigate API performance
+    - Consider reducing retry count or timeout threshold
+    
+    See [Silent Retries Use Case](/use-cases/silent-retries) for detailed example.
+  </Accordion>
+
+  <Accordion title="Can I use WhyOps for research/analysis?" icon="flask">
+    **Yes, WhyOps enables agent behavior research**
+    
+    **Research Use Cases:**
+    
+    📊 **Behavior Pattern Analysis**
+    - Which tool combinations lead to success?
+    - How does memory influence decision quality?
+    - Optimal planner configuration by task type
+    
+    📊 **Failure Mode Discovery**
+    - Cluster similar failures
+    - Identify systemic issues
+    - Build failure taxonomies
+    
+    📊 **Performance Benchmarking**
+    - Compare agent architectures
+    - A/B test prompt strategies
+    - Measure retrieval effectiveness
+    
+    📊 **Decision Quality Metrics**
+    - Token efficiency vs task completion
+    - Memory relevance scores
+    - Tool selection accuracy
+    
+    **Data Export:**
+    ```python
+    # Export decision graphs for analysis
+    threads = whyops.threads.export(
+      filters={"date_range": "last_30_days"},
+      format="json"
+    )
+    
+    # Analyze with pandas/notebooks
+    import pandas as pd
+    df = pd.DataFrame(threads)
+    df.groupby("failure_reason").size()
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Business Questions
+
+<AccordionGroup>
+  <Accordion title="What will WhyOps cost?" icon="dollar-sign">
+    **Pricing Model (Planned):**
+    
+    | Tier | Target User | Pricing | Features |
+    |------|------------|---------|----------|
+    | **Free** | Developers, testing | $0 | Proxy mode, basic graphs, 30-day retention |
+    | **Team** | Startups, production agents | Usage-based | Full SDK, state replay, 90-day retention |
+    | **Enterprise** | Large teams, compliance needs | Custom | On-premise, unlimited retention, SLA |
+    
+    **Usage-Based Metrics:**
+    - Per agent thread processed
+    - Per decision event captured
+    - Storage volume (replay packages)
+    
+    **Comparable Pricing:**
+    - Similar to Datadog APM or Sentry pricing model
+    - Free tier generous enough for development
+    - Production usage scales with value delivered
+    
+    See [Go-to-Market Strategy](/strategy/go-to-market) for more.
+  </Accordion>
+
+  <Accordion title="Why is WhyOps a venture-scale opportunity?" icon="rocket">
+    **Three Compounding Advantages:**
+    
+    **1. Category Creation**
+    - Defines **Agent Runtime Observability** (ARO) as new category
+    - First-mover advantage in emerging agent economy
+    - Analogous to how Datadog defined modern APM
+    
+    **2. Data Moat**
+    - Network effects from collective failure patterns
+    - Value increases with usage (more data = better insights)
+    - Hard to displace once established
+    
+    **3. Infrastructure Play**
+    - Becomes essential layer in agent stack
+    - High switching costs (lost historical data)
+    - Pricing power (mission-critical for production)
+    
+    **Market Timing:**
+    - Agent adoption accelerating (2025-2026)
+    - Production failures increasing
+    - No good debugging tools exist
+    - Window is NOW
+    
+    See [Category Definition](/strategy/category-definition) and [Data Moat](/concepts/data-moat).
+  </Accordion>
+
+  <Accordion title="Who are the target customers?" icon="users">
+    **Four Customer Segments:**
+    
+    **1. AI Startups (Primary)**
+    - Pain: Agents work in demo, fail in production
+    - Need: Fast debugging to ship reliably
+    - Entry: Proxy mode (zero friction)
+    - Expansion: SDK for deeper visibility
+    - Value: Speed to resolution
+    
+    **2. Enterprise AI Teams**
+    - Pain: Can't explain agent decisions to business/legal
+    - Need: Auditability and compliance
+    - Entry: SDK mode (comprehensive from start)
+    - Value: Governance + reliability
+    
+    **3. Agent Framework Developers**
+    - Pain: Users complain of unreliability
+    - Need: Built-in observability
+    - Entry: Partnership/integration
+    - Value: Differentiation + user retention
+    
+    **4. AI Research Labs**
+    - Pain: Hard to analyze agent patterns at scale
+    - Need: Rich behavior datasets
+    - Entry: Full platform access
+    - Value: Research insights
+    
+    See [Go-to-Market Strategy](/strategy/go-to-market) for details.
+  </Accordion>
+
+  <Accordion title="What's the competitive moat long-term?" icon="castle">
+    **Data Moat (Primary Defense)**
+    
+    | Stage | Data Points | Capability | Moat Strength |
+    |-------|------------|------------|---------------|
+    | Year 1 | 10K failures | Basic patterns | ⭐ Weak |
+    | Year 2 | 100K failures | Pattern recognition | ⭐⭐ Building |
+    | Year 3 | 1M failures | Predictive insights | ⭐⭐⭐ Strong |
+    | Year 4+ | 10M+ failures | Industry standard | ⭐⭐⭐⭐ Defensible |
+    
+    **How It Compounds:**
+    1. More users → More failure data collected
+    2. More data → Better pattern matching
+    3. Better patterns → Faster debugging for all users
+    4. Faster debugging → More users sign up
+    5. Loop repeats (flywheel effect)
+    
+    **Example:**
+    - New user hits a failure
+    - WhyOps matches to 1 of 50,000 known patterns
+    - Suggests fix instantly
+    - Competitor with no data can't do this
+    
+    **Similar to:**
+    - Datadog's performance baselines
+    - Sentry's error fingerprinting
+    - GitHub Copilot's code patterns
+    
+    See [Data Moat Concept](/concepts/data-moat) for deep dive.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Implementation Questions
+
+<AccordionGroup>
+  <Accordion title="When will WhyOps ship?" icon="calendar-days">
+    **Current Status:** Architecture complete, implementation not started
+    
+    **Planned Timeline (if funded):**
+    
+    | Phase | Timeline | Deliverables |
+    |-------|----------|--------------|
+    | **MVP** | Weeks 1-4 | Proxy mode, basic SDK, decision graphs, state replay |
+    | **Beta** | Weeks 5-8 | Memory hooks, retry tracking, multi-framework |
+    | **v1.0** | Weeks 9-16 | Production-ready, on-premise option, UI polish |
+    | **v2.0** | Ongoing | Pattern database, predictive alerts, suggestions |
+    
+    See [Roadmap](/strategy/roadmap) for details.
+  </Accordion>
+
+  <Accordion title="Can I contribute or provide feedback?" icon="comments">
+    **Yes! Early feedback is valuable**
+    
+    **Ways to Contribute:**
+    
+    📧 **Email Feedback:**
+    - hello@whyops.com
+    - Share use cases, pain points, feature requests
+    
+    💬 **Design Partner Program:**
+    - Shape product direction
+    - Early access when built
+    - Influence prioritization
+    
+    🔧 **Technical Feedback:**
+    - Review architecture docs
+    - Suggest event schema improvements
+    - Identify edge cases
+    
+    **Most Valuable Feedback:**
+    - Real-world debugging scenarios
+    - Integration pain points
+    - Privacy/security requirements
+    - Pricing expectations
+  </Accordion>
+
+  <Accordion title="Will WhyOps be open source?" icon="code-branch">
+    **Hybrid Model (Planned)**
+    
+    **Open Source:**
+    - ✅ SDK instrumentation libraries
+    - ✅ Event schema definitions
+    - ✅ Replay format specification
+    - ✅ Community integrations
+    
+    **Proprietary:**
+    - ❌ Cloud platform/UI
+    - ❌ Pattern matching engine
+    - ❌ Failure database
+    - ❌ Enterprise features
+    
+    **Rationale:**
+    - OSS SDK → Easy adoption, community trust
+    - Proprietary platform → Data moat, monetization
+    - Similar to: Sentry, Posthog, Supabase
+    
+    **Self-Hosting:**
+    - Enterprise tier will support on-premise deployment
+    - All data stays in your infrastructure
+    - Use OSS SDK with your own backend
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Have More Questions?
+
+<CardGroup cols={2}>
+  <Card title="Contact Us" icon="envelope" href="mailto:hello@whyops.com">
+    Email: hello@whyops.com
+  </Card>
+  
+  <Card title="Read the Docs" icon="book" href="/introduction">
+    Explore complete documentation
+  </Card>
+  
+  <Card title="Architecture Deep Dive" icon="sitemap" href="/architecture/overview">
+    Understand how WhyOps works
+  </Card>
+  
+  <Card title="Check the Roadmap" icon="map" href="/strategy/roadmap">
+    See what's coming next
+  </Card>
+</CardGroup>
