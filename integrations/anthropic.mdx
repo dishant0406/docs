@@ -1,0 +1,74 @@
+---
+title: "Anthropic Integration"
+description: "Use WhyOps as a drop-in proxy for the Anthropic API."
+---
+
+WhyOps supports Anthropic's Claude models via a drop-in API proxy. You can use the official Anthropic SDKs by pointing the `baseURL` to the WhyOps proxy and using your WhyOps API Key.
+
+## Setup
+
+1. **Obtain API Keys**:
+    - Get an API key from your [WhyOps Dashboard](https://app.whyops.com).
+    - Add your Anthropic API key in the **Providers** section of the WhyOps Dashboard.
+
+2. **Configure SDK**:
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    import Anthropic from '@anthropic-ai/sdk';
+
+    const anthropic = new Anthropic({
+      apiKey: process.env.WHYOPS_API_KEY, // Your WhyOps API Key
+      baseURL: 'https://proxy.whyops.com', // The WhyOps Proxy URL
+      defaultHeaders: {
+        'X-Agent-Name': 'research-agent' // Required: Identifies the agent
+      }
+    });
+
+    // Proceed as normal
+    const msg = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: 'Analyze this dataset.' }],
+    });
+    ```
+  </Tab>
+  <Tab title="Python">
+    ```python
+    import os
+    from anthropic import Anthropic
+
+    client = Anthropic(
+      api_key=os.environ.get("WHYOPS_API_KEY"),
+      base_url="https://proxy.whyops.com",
+      default_headers={
+        "X-Agent-Name": "research-agent"
+      }
+    )
+
+    message = client.messages.create(
+      max_tokens=1000,
+      messages=[
+        {
+          "role": "user",
+          "content": "Analyze this dataset.",
+        }
+      ],
+      model="claude-3-5-sonnet-20241022",
+    )
+    ```
+  </Tab>
+</Tabs>
+
+## Supported Endpoints
+
+The proxy fully supports and parses the following Anthropic endpoints:
+
+- **`/messages`**: Standard message creation, including streaming, tool calling, and Claude's extended thinking (chain of thought).
+
+## How WhyOps handles Anthropic Data
+
+1. **Extended Thinking**: WhyOps fully supports Anthropic's `<thinking>` blocks. When using models like Claude 3.5 Sonnet or Opus, WhyOps parses and captures these internal reasoning steps as discrete `llm_thinking` events in your decision graph.
+2. **Streaming Parsing**: If you use the streaming API, WhyOps uses a custom SSE parser (`AnthropicParser`) to reconstruct the full message, tool calls, and thinking blocks as they stream back to your application, ensuring zero added latency.
+3. **Trace IDs**: WhyOps automatically handles trace grouping across Anthropic message arrays.

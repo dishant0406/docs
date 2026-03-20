@@ -1,0 +1,72 @@
+---
+title: "OpenAI Integration"
+description: "Use WhyOps as a drop-in proxy for the OpenAI API."
+---
+
+WhyOps acts as a seamless proxy for the OpenAI API. You can continue using the official OpenAI SDKs—simply change the `baseURL` to point to the WhyOps proxy and provide your WhyOps API Key.
+
+## Setup
+
+1. **Obtain API Keys**:
+    - Get an API key from your [WhyOps Dashboard](https://app.whyops.com).
+    - Add your OpenAI API key in the **Providers** section of the WhyOps Dashboard.
+
+2. **Configure SDK**:
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    import OpenAI from 'openai';
+
+    const openai = new OpenAI({
+      apiKey: process.env.WHYOPS_API_KEY, // Your WhyOps API Key
+      baseURL: 'https://proxy.whyops.com/v1', // The WhyOps Proxy URL
+      defaultHeaders: {
+        'X-Agent-Name': 'customer-support-agent' // Required: Identifies the agent
+      }
+    });
+
+    // Proceed as normal
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: 'What is the status of my order?' }],
+    });
+    ```
+  </Tab>
+  <Tab title="Python">
+    ```python
+    import os
+    from openai import OpenAI
+
+    client = OpenAI(
+      api_key=os.environ.get("WHYOPS_API_KEY"),
+      base_url="https://proxy.whyops.com/v1",
+      default_headers={
+        "X-Agent-Name": "customer-support-agent"
+      }
+    )
+
+    completion = client.chat.completions.create(
+      model="gpt-4o",
+      messages=[
+        {"role": "user", "content": "What is the status of my order?"}
+      ]
+    )
+    ```
+  </Tab>
+</Tabs>
+
+## Supported Endpoints
+
+The proxy fully supports and parses the following OpenAI endpoints:
+
+- **`/chat/completions`**: Standard chat completions, including streaming and tool calling.
+- **`/responses`**: The newer Responses API format.
+- **`/embeddings`**: Generating embeddings for text.
+- **`/models`**: Listing available models (proxies to OpenAI to verify your credentials).
+
+## How WhyOps handles OpenAI Data
+
+1. **Invisible Signatures**: WhyOps will inject zero-width unicode characters into the `content` of the assistant's response. When your agent sends the next message in the conversation, WhyOps strips these characters before forwarding the request to OpenAI.
+2. **Tool Call Tracing**: For non-streaming requests, WhyOps injects a `_whyops_trace_id` argument into the JSON arguments of tool calls.
+3. **Streaming Parsing**: If you set `stream: true`, WhyOps uses a custom SSE parser (`OpenAIParser`) to silently read the stream as it passes through to your application, ensuring no latency is added while still capturing complete telemetry.

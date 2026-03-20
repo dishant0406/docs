@@ -22,94 +22,50 @@
     }
   ],
   "topbarCtaButton": {
-    "name": "Contact",
-    "url": "mailto:hello@whyops.com"
+    "name": "Dashboard",
+    "url": "https://app.whyops.com"
   },
   "navigation": [
     {
       "group": "Getting Started",
       "pages": [
-        "introduction",
-        "status",
-        "problem-space",
-        "core-model",
-        "positioning"
+        "getting-started/introduction",
+        "getting-started/quickstart"
+      ]
+    },
+    {
+      "group": "Integrations",
+      "pages": [
+        "integrations/openai",
+        "integrations/anthropic",
+        "integrations/manual-events"
+      ]
+    },
+    {
+      "group": "UI Features",
+      "pages": [
+        "features/decision-graphs",
+        "features/trace-inspector",
+        "features/agent-knowledge-profiles",
+        "features/synthetic-evals"
       ]
     },
     {
       "group": "Core Concepts",
       "pages": [
-        "concepts/hidden-cognition",
-        "concepts/data-moat"
-      ]
-    },
-    {
-      "group": "Product Features",
-      "pages": [
-        "features/state-replay"
+        "core-concepts/traces-and-threads",
+        "core-concepts/invisible-signatures",
+        "core-concepts/evaluations-and-analysis"
       ]
     },
     {
       "group": "Architecture",
       "pages": [
         "architecture/overview",
-        "architecture/shadow-telemetry",
-        "architecture/integration-modes",
-        "architecture/proxy-layer",
-        "architecture/sdk-layer",
-        "architecture/decision-loop-reconstruction",
-        "architecture/state-replay",
-        "architecture/decision-graph"
-      ]
-    },
-    {
-      "group": "Event Schema",
-      "pages": [
-        "events/overview",
-        "events/llm-call",
-        "events/tool-execution",
-        "events/memory-retrieval",
-        "events/planner-step",
-        "events/agent-termination",
-        "events/metadata-envelope"
-      ]
-    },
-    {
-      "group": "Use Cases",
-      "pages": [
-        "use-cases/silent-retries",
-        "use-cases/tool-sanitization",
-        "use-cases/memory-mutation",
-        "use-cases/framework-termination",
-        "use-cases/rag-mechanics"
-      ]
-    },
-    {
-      "group": "Implementation",
-      "pages": [
-        "implementation/principles",
-        "implementation/mvp",
-        "implementation/phase-1-proxy",
-        "implementation/phase-2-sdk",
-        "implementation/thread-context",
-        "implementation/performance-privacy"
-      ]
-    },
-    {
-      "group": "Strategy & Business",
-      "pages": [
-        "strategy/category-definition",
-        "strategy/competitive-landscape",
-        "strategy/go-to-market",
-        "strategy/roadmap",
-        "strategy/risks"
-      ]
-    },
-    {
-      "group": "Resources",
-      "pages": [
-        "resources/faq",
-        "resources/glossary"
+        "architecture/proxy-service",
+        "architecture/analyse-service",
+        "architecture/auth-service",
+        "architecture/frontend-app"
       ]
     }
   ],

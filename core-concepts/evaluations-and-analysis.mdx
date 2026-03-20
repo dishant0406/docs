@@ -1,0 +1,55 @@
+---
+title: "Evaluations and Analysis"
+description: "Automatically analyze your agent runs for reliability, cost, and latency."
+---
+
+WhyOps doesn't just record what your agents did—it tells you *why* they failed and *how* to improve them. This is done through the **Agent Analyses** feature in the `whyops-analyse` service.
+
+## Static Analysis
+
+Every trace in WhyOps is subjected to **Static Analysis**. This runs automatically and detects common structural failures without needing an LLM judge.
+
+### What it detects:
+
+- **Missing Parent Steps**: An event references a parent step that does not exist in the trace.
+- **Orphan Tool Call Responses**: A tool returned a result, but the request was never logged.
+- **Missing Tool Call Responses**: The agent requested a tool, but it never received a response (timeout or crash).
+- **Identical Tool Call Loops**: The agent called the exact same tool with the exact same arguments 3 or more times consecutively. (A classic infinite loop).
+- **Consecutive Error Streaks**: The agent encountered 3 or more errors in a row without recovering.
+- **Latency Outliers**: A step took significantly longer (e.g., > 1.5x the p95 latency) than the rest of the trace.
+- **Token Outliers**: A step consumed significantly more tokens than the p95 average for the trace.
+
+Static analysis provides actionable recommendations for each finding, such as "Add a circuit breaker to avoid repeated failing attempts."
+
+## LLM-as-a-Judge Analysis
+
+For deeper insights, WhyOps supports **Agent Analysis Runs** using an LLM Judge. You can configure WhyOps to evaluate traces on specific dimensions.
+
+### Supported Dimensions
+
+1. `intent_precision`: Did the agent correctly identify the user's intent?
+2. `followup_repair`: How well did the agent handle clarifying questions or recover from ambiguity?
+3. `answer_completeness_clarity`: Was the final answer complete, accurate, and easy to understand?
+4. `tool_routing_quality`: Did the agent select the right tool for the job?
+5. `tool_invocation_quality`: Did the agent pass the correct arguments to the tool?
+6. `tool_output_utilization`: Did the agent correctly interpret and use the output of the tool?
+7. `reliability_recovery`: How gracefully did the agent handle errors or missing information?
+8. `latency_cost_efficiency`: Was the agent's path to the answer efficient?
+9. `conversation_ux`: Was the tone and structure of the conversation appropriate?
+
+### Configuring Agent Analyses
+
+You can configure analyses to run automatically via cron, or trigger them manually via the dashboard or API.
+
+```json
+POST /api/agent-analyses/:agentId/run
+
+{
+  "lookbackDays": 7,
+  "mode": "standard", // "quick", "standard", or "deep"
+  "judgeModel": "gpt-4o",
+  "dimensions": ["tool_routing_quality", "reliability_recovery"]
+}
+```
+
+The analyses will score the agent's traces and generate an **Agent Knowledge Profile** to help you understand your agent's strengths and weaknesses.

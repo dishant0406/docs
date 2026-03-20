@@ -1,0 +1,98 @@
+---
+title: "Manual Events (REST API)"
+description: "Send telemetry data directly to the WhyOps Analyse service."
+---
+
+While the WhyOps Proxy is the easiest way to instrument your agents automatically, you may have custom tools, non-LLM reasoning steps, or internal framework logic that you want to visualize in your decision graph.
+
+You can send events directly to the `whyops-analyse` service using our REST API.
+
+## Endpoint Overview
+
+**Base URL**: `https://api.whyops.com/api` (or your self-hosted URL)
+
+**Authentication**: 
+You must include an API key generated from the WhyOps Dashboard in the `Authorization` header.
+```http
+Authorization: Bearer <WHYOPS_API_KEY>
+```
+
+The API key automatically resolves your `userId`, `projectId`, and `environmentId`.
+
+## Ingesting Events
+
+Use the `/events/ingest` endpoint to send one or more events.
+
+### `POST /api/events/ingest`
+
+Accepts a single event object or an array of event objects.
+
+<Tabs>
+  <Tab title="Request">
+    ```bash
+    curl -X POST https://api.whyops.com/api/events/ingest \
+      -H "Authorization: Bearer YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "traceId": "123e4567-e89b-12d3-a456-426614174000",
+        "spanId": "tool-call-1",
+        "eventType": "tool_call_request",
+        "agentName": "my-customer-support-agent",
+        "timestamp": "2024-03-20T12:00:00Z",
+        "content": {
+          "toolCalls": [
+            {
+              "name": "search_database",
+              "arguments": { "query": "latest orders" }
+            }
+          ]
+        },
+        "metadata": {
+          "tool": "search_database"
+        }
+      }'
+    ```
+  </Tab>
+</Tabs>
+
+## Event Schema
+
+Every event you send must conform to this schema:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `eventType` | `string` | **Yes** | See below for allowed types. |
+| `traceId` | `string` | **Yes** | 1-128 chars. Groups events into a single agent run. |
+| `agentName` | `string` | **Yes** | 1-255 chars. Identifies the specific agent. |
+| `spanId` | `string` | No | Links related requests and responses (e.g. tool calls). |
+| `stepId` | `integer` | No | Used for ordering events sequentially (>= 1). |
+| `parentStepId` | `integer`| No | Used to build nested tree structures (>= 1). |
+| `timestamp` | `string` | No | ISO 8601 string. Defaults to the time received. |
+| `content` | `any` | No | The actual payload (e.g., messages, tool outputs). |
+| `metadata` | `object` | No | Additional context (e.g., latency, tokens, model used). |
+| `idempotencyKey` | `string`| No | Prevents duplicate event ingestion. |
+
+## Allowed Event Types
+
+To ensure accurate static analysis and graph rendering, you must use one of the predefined event types.
+
+### LLM Interactions
+- `user_message`: User input to the model (or the full message history).
+- `llm_response`: The model's response content and optional tool calls. Requires `metadata.model` and `metadata.provider`.
+- `embedding_request`: Input payload sent to an embedding provider.
+- `embedding_response`: Output summary from an embedding provider.
+- `llm_thinking`: Traces of internal reasoning (e.g., Anthropic's `<thinking>` blocks).
+
+### Tool Execution
+- `tool_call_request`: A request to execute a tool. **Requires** `metadata.tool` to be set.
+- `tool_call_response`: The output returned from a tool execution. **Requires** `metadata.tool` to be set.
+- `tool_result`: Tool results returned *back to the model* by your framework.
+
+### Errors
+- `error`: Represents upstream API failures, tool crashes, or framework exceptions.
+
+## Best Practices for Manual Events
+
+1. **Use Span IDs for Tool Calls**: When you emit a `tool_call_request` and later emit the `tool_call_response`, give them both the exact same `spanId`. Our static analysis uses this to detect hanging/orphan tool calls.
+2. **Include Latency**: In the `metadata` object, include a `latencyMs` field. We use this to build performance distributions and flag outliers in the UI.
+3. **Batching**: You can pass an array of events to `/api/events/ingest` to reduce network overhead.

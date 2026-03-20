@@ -1,0 +1,54 @@
+---
+title: "Agent Knowledge Profiles"
+description: "Aggregate performance analytics and LLM evaluations."
+---
+
+While traces and decision graphs help you debug a *single* failure, **Agent Knowledge Profiles** help you understand your agent's performance across *thousands* of runs.
+
+## What is an Agent Knowledge Profile?
+
+A Knowledge Profile is an aggregated dashboard specific to a single Agent (identified by the `X-Agent-Name` header you send through the proxy).
+
+It combines:
+1. **Usage Analytics**: Volume, token consumption, and cost over time.
+2. **Performance Analytics**: P50/P90/P99 latency distributions.
+3. **Evaluation Scores**: The results of automated LLM-as-a-judge evaluations run by the WhyOps `analyse` service.
+
+## LLM Evaluations
+
+You can configure WhyOps to automatically run deep evaluations on a sampling of your agent's traces. 
+
+When you trigger an analysis run (e.g., mode: `deep`, judgeModel: `gpt-4o`), WhyOps evaluates the trace across specific dimensions that you select.
+
+### Viewing the Data
+
+The Knowledge Profile visualizes these scores using `recharts` to show trends over time.
+
+- **Trend Lines**: See if your agent's `intent_precision` dropped after you deployed a new system prompt last Tuesday.
+- **Radar Charts**: Compare your agent's strengths. Perhaps your agent is excellent at `tool_invocation_quality` (formatting JSON arguments correctly) but terrible at `tool_routing_quality` (picking the right tool in the first place).
+- **Failure Modals**: The profile highlights the most common static analysis findings for your agent. If 40% of your traces have an `ORPHAN_TOOL_CALL_RESPONSE` warning, you know there is a systemic bug in your agent framework's event emission.
+
+## Configuring Evaluations
+
+You can set up automated cron-based evaluations via the API:
+
+```http
+PUT /api/agent-analyses/:agentId/config
+Authorization: Bearer <WHYOPS_API_KEY>
+
+{
+  "enabled": true,
+  "cronExpr": "0 0 * * *", // Run nightly
+  "timezone": "UTC",
+  "lookbackDays": 1,
+  "mode": "standard",
+  "judgeModel": "gpt-4o",
+  "dimensions": [
+    "intent_precision",
+    "tool_routing_quality",
+    "answer_completeness_clarity"
+  ]
+}
+```
+
+This ensures you have a continuously updating baseline of your agent's quality without writing manual evaluation scripts.

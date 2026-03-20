@@ -1,0 +1,36 @@
+---
+title: "Frontend App"
+description: "The visual interface for your agents' decision graphs."
+---
+
+The WhyOps frontend is a Next.js 15 application designed to visualize and analyze the complex, non-deterministic decision paths of autonomous agents.
+
+## Core Visualizations
+
+### 1. Decision Graphs
+
+Instead of linear logs, WhyOps uses a directed acyclic graph (DAG) to represent the flow of an agent's reasoning, tool execution, and memory retrieval.
+
+- **Technology**: Built using `reactflow` for the interactive node-link diagrams and `dagre` for automated layout and routing.
+- **Node Types**: Represents specific events in a trace, such as a user prompt, an LLM call, a tool execution, or a failure.
+- **Edges**: Represents causality and data flow between nodes (e.g., the output of a tool call feeding into the next LLM prompt).
+
+### 2. Trace Inspector
+
+When a user clicks on a node in the decision graph, a detailed inspector pane opens, revealing the precise payload of that event.
+
+- **Payloads**: View raw JSON of prompts, completions, and tool arguments.
+- **Metadata**: See latency, token usage, and the specific model version used.
+- **Diffs**: Compare changes in agent state or memory across sequential steps using `react-diff-viewer-continued`.
+
+### 3. Agent Knowledge Profiles
+
+A high-level dashboard that aggregates the results of automated evaluations (`whyops-analyse`) across all runs of a specific agent.
+
+- **Metrics**: Track average scores on dimensions like `intent_precision` and `reliability_recovery` over time.
+- **Visuals**: Uses `recharts` to render trend lines and distributions of agent performance.
+- **Insights**: Highlight recurring failure modes (e.g., "This agent frequently enters an infinite loop when the `search_docs` tool returns no results").
+
+## State Replay (Coming Soon)
+
+A core tenet of WhyOps is the ability to recreate the exact environment in which an agent failed. The frontend is building tools to extract the state of an agent at a specific node in the decision graph and replay it locally, allowing developers to debug failures without re-running expensive or side-effect-heavy steps.

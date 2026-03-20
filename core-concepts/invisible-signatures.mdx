@@ -1,0 +1,48 @@
+---
+title: "Invisible Signatures"
+description: "How WhyOps automatically groups disjointed API calls into a single agent trace."
+---
+
+One of the biggest challenges in observing AI agents is maintaining context across multiple API requests. 
+
+When your agent makes a request to OpenAI or Anthropic, it is stateless. The model does not "remember" the previous request. Your agent framework (e.g., LangChain, AutoGen) maintains the conversation history and sends the entire array of messages back to the LLM.
+
+However, if you're using a proxy like WhyOps, how do we know that Request B is a continuation of Request A?
+
+<Callout type="info" title="The Problem">
+  If you don't explicitly pass a `traceId` header, a proxy sees two separate requests. It doesn't know they are part of the same agent execution.
+</Callout>
+
+## The WhyOps Solution: Invisible Signatures
+
+WhyOps solves this natively by injecting **Invisible Signatures** into the LLM's response before it reaches your application.
+
+### How it works:
+
+1. **Initial Request**: Your agent sends a prompt to WhyOps. WhyOps generates a new `traceId` (e.g., `1234-abcd`).
+2. **Proxy to LLM**: WhyOps forwards the request to the LLM provider (OpenAI, Anthropic).
+3. **LLM Response**: The LLM responds with a message (e.g., `"The weather in Paris is 72°F."`).
+4. **Signature Injection**: Before WhyOps returns the response to your application, it encodes the `traceId` into a sequence of zero-width Unicode characters (invisible to the human eye). It appends this invisible signature to the end of the LLM's message content.
+5. **Next Request**: Your agent receives the message (including the invisible signature) and stores it in its conversation history. When the agent makes its next request, it sends the entire history back to WhyOps.
+6. **Signature Extraction**: WhyOps scans the incoming request's message history. It finds the invisible signature from the previous assistant message, decodes the `traceId`, and uses it to link the new request to the existing trace.
+
+### Clean Execution
+
+Crucially, **WhyOps strips the invisible signature from the messages before sending them to the LLM.** 
+
+This ensures that:
+- The LLM does not see the invisible characters, preventing confusion or token waste.
+- Your agent framework does not need to manage or pass trace IDs manually.
+- The user experience is completely unaffected.
+
+## Example Flow (OpenAI /responses)
+
+1. Client sends a request to `/responses`.
+2. WhyOps proxy generates a `traceId`.
+3. Proxy passes request to OpenAI.
+4. OpenAI responds with `output[].content[].text`.
+5. WhyOps appends an encoded, zero-width string of the `traceId` to the `text`.
+6. Client stores the output text.
+7. Next request, client sends the history. WhyOps finds the zero-width string in `input` messages, decodes the `traceId`, strips it from the payload, and forwards it to OpenAI.
+
+This technique is used for both OpenAI's `/chat/completions` and `/responses` endpoints, as well as Anthropic's `/messages`.

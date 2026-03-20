@@ -1,0 +1,47 @@
+---
+title: "Proxy Service"
+description: "The API gateway that sits between your application and model providers."
+---
+
+The `whyops-proxy` is a high-performance HTTP proxy built on [Hono](https://hono.dev/) that sits between your AI application and model providers like OpenAI and Anthropic. It captures your agent's requests and responses, injecting telemetry without touching your critical path.
+
+## How it works
+
+When you send a request to the WhyOps proxy, it:
+
+1. **Authenticates** the request using the `Authorization: Bearer <WHYOPS_API_KEY>` header.
+2. **Resolves** the appropriate provider credentials (e.g., your OpenAI API key) based on the requested model and the environment configuration in your WhyOps dashboard.
+3. **Extracts** or generates a `Trace ID` for the interaction.
+4. **Forwards** the request to the upstream provider.
+5. **Streams** the response back to your application.
+6. **Asynchronously dispatches** the request, response, and telemetry data (latency, token usage) to Redis via the `dispatchAnalyseEvent` function.
+
+## Key Features
+
+### Invisible Signatures
+
+To group stateless LLM calls into coherent traces without requiring client-side SDK instrumentation, the proxy uses **Invisible Signatures**. It encodes the `Trace ID` into a sequence of zero-width Unicode characters and appends it to the LLM's response. On subsequent requests, the proxy scans the message history for this signature to re-associate the call with the ongoing trace.
+
+### Streaming Support
+
+The proxy fully supports Server-Sent Events (SSE) streaming. When a streaming request is made:
+
+1. The proxy `tee()`s the upstream response stream.
+2. One branch is streamed directly back to the client, ensuring minimal latency.
+3. The other branch is parsed using custom stream decoders (`OpenAIParser`, `AnthropicParser`) to reconstruct the full response content, tool calls, and usage statistics. This reconstructed data is then dispatched to the analytics engine asynchronously.
+
+### Tool Call Interception
+
+For non-streaming requests, the proxy can directly inject the `Trace ID` into the arguments of tool calls returned by the LLM. This allows your application to explicitly track which trace triggered a specific tool execution, facilitating complete end-to-end observability.
+
+```json
+{
+  "name": "get_weather",
+  "arguments": "{\"location\": \"San Francisco\", \"_whyops_trace_id\": \"123e4567-e89b-12d3-a456-426614174000\"}"
+}
+```
+
+### Supported Endpoints
+
+- **OpenAI:** `/chat/completions`, `/responses`, `/embeddings`, `/models`
+- **Anthropic:** `/messages`

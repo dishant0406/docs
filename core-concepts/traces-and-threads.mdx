@@ -1,0 +1,37 @@
+---
+title: "Traces and Threads"
+description: "How WhyOps organizes agent execution paths."
+---
+
+In traditional observability, you monitor "Requests". In AI Agent observability, you monitor **Traces** and **Threads**.
+
+## Definitions
+
+- **Event**: A single discrete action, such as an LLM Request, LLM Response, Tool Call Request, or Tool Call Response.
+- **Span**: A pairing of request and response. For example, a `tool_call_request` and its corresponding `tool_call_response` share the same `spanId`.
+- **Trace**: A complete, end-to-end execution of an agent answering a single user query or completing a single task. A trace is a collection of events.
+- **Thread**: A collection of traces that represent a multi-turn conversation or a long-running saga.
+
+## Trace Construction
+
+When you use the WhyOps Proxy, traces are constructed automatically without you needing to pass trace IDs around your codebase manually. 
+
+We achieve this via three fallback mechanisms:
+
+1. **Header Explicit ID**: If you pass `X-Trace-ID` or `X-Thread-ID` in the request headers, WhyOps uses it.
+2. **Invisible Signatures**: If no header is provided, WhyOps scans the `messages` history of the incoming request. If it finds a hidden Unicode signature (injected by WhyOps in a previous response), it decodes the signature to recover the active `traceId`.
+3. **Auto-generation**: If neither is found, WhyOps assumes this is a new execution and generates a fresh `traceId` (UUID v4).
+
+<Callout type="tip" title="Best Practice">
+For maximum reliability, you can explicitly pass the `X-Trace-ID` header if your framework makes it easy to access the current context. However, our Invisible Signatures handle 95% of use cases out of the box.
+</Callout>
+
+## Event Schema
+
+Every event recorded by WhyOps contains:
+- `traceId`: The overall execution context.
+- `spanId`: The specific operation (e.g. one specific API call).
+- `eventType`: The type of event (e.g., `user_message`, `tool_result`, `llm_response`, `error`).
+- `timestamp`: When it occurred.
+- `content`: The actual payload (messages, tool outputs, errors).
+- `metadata`: Model info, tokens used, latency, provider, etc.

@@ -1,0 +1,52 @@
+---
+title: "Analyse Service"
+description: "The engine that processes traces and runs evaluations."
+---
+
+The `whyops-analyse` service is the data processing backend of the WhyOps platform. It consumes the telemetry events emitted by the proxy, persists them, and runs automated analyses to generate insights about your agents.
+
+## Event Processing Pipeline
+
+1. **Event Consumption**: The service runs a worker (`events-queue.service.ts`) that listens to a Redis queue for incoming `LLMEvent` payloads from the proxy.
+2. **Persistence**: Events are saved to a PostgreSQL database using Sequelize ORM.
+3. **Trace Reconstruction**: Events are grouped by `Trace ID` and `Span ID` to reconstruct the full execution graph of an agent's interaction.
+
+## Analysis Engines
+
+The Analyse service features two primary analysis engines:
+
+### 1. Static Analysis
+
+Every trace undergoes deterministic static analysis. This engine scans the structure and metadata of the trace to identify structural anomalies without using an LLM.
+
+**Key capabilities:**
+- **Trace Integrity**: Detects missing parent steps, duplicate step IDs, or steps out of chronological order.
+- **Tool Execution**: Identifies orphan tool call responses or tool requests that never received a response (timeouts/crashes).
+- **Retry Loops**: Detects identical tool calls repeated multiple times in succession, indicating the agent is stuck in a loop.
+- **Performance Outliers**: Flags steps that significantly exceed the 95th percentile for latency or token usage within the trace.
+
+### 2. Agent Analysis (LLM-as-a-Judge)
+
+For qualitative evaluation, the service can run deep analyses using an LLM Judge (e.g., GPT-4o). These analyses score the agent's performance across various dimensions.
+
+**Supported Dimensions:**
+- `intent_precision`: Accuracy in identifying user intent.
+- `followup_repair`: Ability to handle ambiguity or clarify questions.
+- `answer_completeness_clarity`: Quality and completeness of the final output.
+- `tool_routing_quality`: Correct selection of tools for the task.
+- `tool_invocation_quality`: Accuracy of arguments passed to tools.
+- `tool_output_utilization`: Effective use of tool results in the final answer.
+- `reliability_recovery`: Graceful handling of errors or missing data.
+- `latency_cost_efficiency`: Optimization of the path taken to reach the answer.
+- `conversation_ux`: Appropriateness of tone and interaction style.
+
+## API Endpoints
+
+The Analyse service provides RESTful endpoints for the dashboard:
+
+- `/api/events`: Query raw telemetry events.
+- `/api/threads`: Fetch grouped traces and threads.
+- `/api/analyses`: Retrieve trace-level static analysis findings.
+- `/api/agent-analyses`: Manage and trigger LLM judge evaluations for specific agents.
+- `/api/analytics`: Aggregate statistics (cost, latency, usage).
+- `/api/visualize`: Data structures optimized for rendering decision graphs in the UI.

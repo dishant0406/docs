@@ -1,0 +1,74 @@
+---
+title: "Quickstart"
+description: "Start tracing your AI agents in under two minutes."
+---
+
+WhyOps acts as a drop-in API proxy for LLM providers like OpenAI and Anthropic. You do not need to rewrite your agent logic to start capturing traces.
+
+## 1. Get your WhyOps API Key
+
+1. Log in to the [WhyOps Dashboard](https://app.whyops.com).
+2. Create a new **Project** and **Environment**.
+3. Navigate to **API Keys** and generate a new key.
+4. Add your provider API keys (OpenAI, Anthropic) in the **Providers** section of the dashboard.
+
+## 2. Update your Base URL
+
+Configure your existing OpenAI or Anthropic SDKs to point to the WhyOps proxy.
+
+<Tabs>
+  <Tab title="OpenAI (TypeScript)">
+    ```typescript
+    import OpenAI from 'openai';
+
+    const openai = new OpenAI({
+      apiKey: process.env.WHYOPS_API_KEY,
+      baseURL: 'https://proxy.whyops.com/v1',
+      defaultHeaders: {
+        'X-Agent-Name': 'my-customer-support-agent'
+      }
+    });
+
+    // The proxy automatically routes the request to OpenAI 
+    // using the provider credentials stored in your WhyOps dashboard.
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: 'Hello!' }],
+    });
+    ```
+  </Tab>
+  <Tab title="Anthropic (TypeScript)">
+    ```typescript
+    import Anthropic from '@anthropic-ai/sdk';
+
+    const anthropic = new Anthropic({
+      apiKey: process.env.WHYOPS_API_KEY,
+      baseURL: 'https://proxy.whyops.com', // or proxy.whyops.com/v1 depending on SDK
+      defaultHeaders: {
+        'X-Agent-Name': 'my-research-agent'
+      }
+    });
+
+    const msg = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: 'Hello!' }],
+    });
+    ```
+  </Tab>
+</Tabs>
+
+<Callout type="info" title="Required Headers">
+  You must provide the `X-Agent-Name` header on every request to identify which agent is making the call.
+</Callout>
+
+## 3. View your Traces
+
+Once your agent makes a request, WhyOps automatically injects **Invisible Signatures** to tie follow-up tool calls and context windows into a single trace. 
+
+Navigate to the **Traces** tab in the WhyOps Dashboard to view the real-time execution graphs.
+
+## Next Steps
+
+- Learn how [Invisible Signatures](/core-concepts/invisible-signatures) work.
+- See how to configure [Agent Analyses](/core-concepts/evaluations-and-analysis).

@@ -1,0 +1,33 @@
+---
+title: "Trace Inspector"
+description: "Deep dive into the payloads of every agent step."
+---
+
+While the Decision Graph gives you the high-level view of an agent's reasoning path, the **Trace Inspector** gives you the low-level data.
+
+When you click on any node in a Decision Graph, the Trace Inspector slides out from the right side of the dashboard.
+
+## Features
+
+### 1. Raw Payloads
+View the exact JSON that was sent over the wire.
+- For **LLM Calls**, you see the complete `messages` array, including the system prompt and the exact conversation history up to that point.
+- For **Tool Calls**, you see the specific arguments the LLM generated and the exact raw JSON the tool returned.
+
+### 2. Formatted Content
+Reading raw JSON strings with escaped newline characters (`\n`) is difficult. The Trace Inspector automatically parses Markdown, code blocks, and JSON objects into highly readable, syntax-highlighted components.
+
+### 3. Metadata and Telemetry
+At a glance, see the critical performance metrics for that specific node:
+- **Latency**: How many milliseconds the operation took.
+- **Tokens**: Prompt, completion, and total token usage.
+- **Provider Info**: Which model (`gpt-4o`, `claude-3-5-sonnet`) and provider was used.
+
+### 4. Static Analysis Findings
+If the WhyOps `analyse` service detected an anomaly on this specific step, it will be highlighted at the top of the inspector.
+
+For example, if you click on a Tool Execution node that took 15 seconds (when the p95 for the trace is 2 seconds), you will see a warning:
+> **Latency Outlier**: This step took 15,000ms. Consider optimizing the slow path for this tool.
+
+### 5. Context Diffs (Coming Soon)
+For long-running agents, the context window (the array of messages) changes over time. The Trace Inspector includes a diff viewer (using `react-diff-viewer-continued`) that allows you to compare the context window of the current node against the previous node, making it easy to see exactly what new information was injected into the agent's memory.

@@ -1,0 +1,23 @@
+---
+title: "Auth Service"
+description: "Authentication and authorization for the WhyOps platform."
+---
+
+The `whyops-auth` service manages user identity, session management, and API key provisioning for the entire WhyOps platform. It is built using the `better-auth` framework to provide secure, scalable authentication.
+
+## Responsibilities
+
+1. **User Management**: Handles signup, login, password resets, and profile management.
+2. **Session Handling**: Issues and validates session tokens for users accessing the WhyOps dashboard.
+3. **API Key Management**: Generates, validates, and revokes API keys used by your applications to communicate with the `whyops-proxy`.
+4. **Access Control**: Enforces permissions based on user roles, projects, and environments.
+
+## Integration with other services
+
+Both the `whyops-proxy` and `whyops-analyse` services rely on middleware (`@whyops/shared/middleware`) that validates requests against the Auth service.
+
+When a request reaches the proxy:
+1. The proxy extracts the `Authorization: Bearer <API_KEY>` header.
+2. The middleware validates the key.
+3. If valid, the middleware injects an `ApiKeyAuthContext` into the request, containing the `userId`, `projectId`, and `environmentId` associated with the key.
+4. The proxy uses this context to route the request and tag telemetry data.

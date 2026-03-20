@@ -1,0 +1,50 @@
+---
+title: "Introduction"
+description: "WhyOps: Observability and Evaluations for AI Agents"
+---
+
+**WhyOps is a decision infrastructure platform for autonomous agent systems.**
+
+We move beyond basic prompt and token logging to help you understand exactly why your agents make the decisions they do. WhyOps runs in a proxy architecture that sits seamlessly between your application and your model providers.
+
+<Callout type="success" title="Deployed and Production Ready">
+  WhyOps is currently deployed in production. You can proxy requests, evaluate agent runs, and view decision graphs in real-time.
+</Callout>
+
+## The Problem
+
+Traditional observability tools fail when it comes to autonomous AI agents because they track deterministic execution paths (Request → Response). Agents, however, operate using:
+- Non-deterministic planning loops
+- Internal chain-of-thought and invisible reasoning
+- Tool calling loops and failure retries
+- Dynamic context assembly
+
+When an agent fails, you need to answer:
+- *Why did it invoke that specific tool?*
+- *Why did it enter an infinite retry loop?*
+- *How did the system prompt influence this specific chain of thought?*
+
+## The WhyOps Solution
+
+WhyOps intercepts LLM traffic to trace these internal decision loops automatically. We do this primarily through our **Proxy Layer** that captures:
+
+1. **Complete LLM Interactions**: Prompts, tool calls, and LLM responses.
+2. **Invisible Signatures**: A mechanism that injects hidden tokens to trace context across disjointed API requests, stitching them into a unified agent "Thread."
+3. **Agent Evaluations**: Our `whyops-analyse` service runs evaluations across traces, scoring runs on dimensions like intent precision, tool routing quality, and reliability.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Invisible Signatures" icon="fingerprint" href="/core-concepts/invisible-signatures">
+    Automatically groups stateless LLM calls into coherent traces without requiring complex client-side SDK instrumentation.
+  </Card>
+  <Card title="Automated Static Analysis" icon="chart-line" href="/core-concepts/evaluations-and-analysis">
+    Detects duplicate tool calls, missing responses, missing context, and infinite retry loops passively.
+  </Card>
+  <Card title="Proxy Architecture" icon="network-wired" href="/architecture/proxy-service">
+    Drop-in replacement for OpenAI and Anthropic API endpoints. Just change your Base URL.
+  </Card>
+  <Card title="Decision Graph UI" icon="diagram-project" href="/architecture/frontend-app">
+    Visualize the precise causal chain of reasoning steps that led to an agent's final answer.
+  </Card>
+</CardGroup>

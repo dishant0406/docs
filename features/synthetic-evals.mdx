@@ -1,0 +1,67 @@
+---
+title: "Synthetic Eval Generation"
+description: "Automatically generate test suites for your agents based on real-world intelligence."
+---
+
+Writing robust evaluations (evals) for AI agents is tedious and often misses critical edge cases. WhyOps solves this by automatically generating comprehensive, adversarial test suites tailored to your specific agent's behavior and real-world failure patterns.
+
+## How it works
+
+The **Synthetic Eval Generation** engine in the `whyops-analyse` service uses a multi-step pipeline to build high-quality test cases.
+
+### 1. Agent Profiling
+First, WhyOps analyzes your agent's historical traces (prompts, tool usage, common responses) to build an **Agent Profile**. It understands *what* your agent does, *who* its users are, and *how* it operates.
+
+### 2. Intelligence Gathering
+Next, WhyOps proactively searches the internet for known failure modes, competitor complaints, and edge cases related to your agent's domain. It pulls intelligence from:
+- **Linkup Search**
+- **Hacker News (HN)**
+- **GitHub Issues**
+- **Reddit Discussions**
+
+*Example: If your agent is a "Customer Support Bot for E-commerce", WhyOps searches for common e-commerce bot failures, refund edge cases, and user complaints on Reddit.*
+
+### 3. Generation & Critique
+Using the Agent Profile and gathered intelligence, WhyOps employs a multi-agent LangChain workflow:
+- **Generator**: Creates test cases across various categories.
+- **Critique**: A separate judge model reviews the generated cases to ensure they are realistic, challenging, and strictly verifiable.
+- **Validation**: Ensures the output schema perfectly matches testing frameworks.
+
+## Eval Categories
+
+You can configure WhyOps to generate evals across seven distinct categories:
+
+1. **`happy_path`**: Standard user interactions that should succeed easily.
+2. **`edge_case`**: Rare or complex scenarios that test the boundaries of the agent's logic.
+3. **`multi_step`**: Tasks requiring the agent to execute a sequence of tools correctly.
+4. **`error_handling`**: Scenarios where tools simulate failures (e.g., database timeout) to see if the agent recovers gracefully.
+5. **`adversarial`**: Attempts to jailbreak the agent or bypass its system prompt instructions.
+6. **`safety`**: Prompts designed to test PII redaction, harmful content filters, and compliance.
+7. **`feature_specific`**: Tests targeting a custom prompt or specific new feature you've defined.
+
+## Exporting for Promptfoo
+
+WhyOps doesn't force you to use a proprietary testing runner. You can export the generated test suite directly into a YAML format fully compatible with [Promptfoo](https://promptfoo.dev/).
+
+### API Export
+
+```http
+GET /api/evals/:agentId/export/promptfoo
+Authorization: Bearer <WHYOPS_API_KEY>
+```
+
+This returns a `promptfoo.yaml` file containing your exact system prompt, the generated test cases, and the strict assertions (e.g., `llm-rubric`, `icontains`, `is-json`) required to validate them.
+
+You can then run the suite locally in your CI/CD pipeline:
+```bash
+promptfoo eval -c whyops-evals.yaml
+```
+
+## Running via the Dashboard
+
+You do not need to use the API to generate evals. Navigate to the **Evals Tab** on your Agent's page in the WhyOps Dashboard.
+
+1. Select your target categories.
+2. Click **Generate Evals**.
+3. (If intelligence needs to be gathered, WhyOps will process this in the background).
+4. Review the generated cases in the UI and click **Export as Promptfoo**.
