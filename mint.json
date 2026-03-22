@@ -36,6 +36,7 @@
     {
       "group": "Integrations",
       "pages": [
+        "integrations/agent-init",
         "integrations/openai",
         "integrations/anthropic",
         "integrations/manual-events"
@@ -47,7 +48,8 @@
         "features/decision-graphs",
         "features/trace-inspector",
         "features/agent-knowledge-profiles",
-        "features/synthetic-evals"
+        "features/synthetic-evals",
+        "features/agent-workspace"
       ]
     },
     {

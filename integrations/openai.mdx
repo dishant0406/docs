@@ -5,6 +5,8 @@ description: "Use WhyOps as a drop-in proxy for the OpenAI API."
 
 WhyOps acts as a seamless proxy for the OpenAI API. You can continue using the official OpenAI SDKs—simply change the `baseURL` to point to the WhyOps proxy and provide your WhyOps API Key.
 
+For the best results, combine this with [Agent Init and Registration](/integrations/agent-init) so traces are bound to versioned agent configs from day one.
+
 ## Setup
 
 1. **Obtain API Keys**:
@@ -65,8 +67,50 @@ The proxy fully supports and parses the following OpenAI endpoints:
 - **`/embeddings`**: Generating embeddings for text.
 - **`/models`**: Listing available models (proxies to OpenAI to verify your credentials).
 
+## Required and optional headers
+
+| Header | Required | Purpose |
+|---|---:|---|
+| `Authorization: Bearer <WHYOPS_API_KEY>` | Yes | Authenticates to WhyOps, not directly to OpenAI |
+| `X-Agent-Name` | Yes | Tells WhyOps which registered agent is making the request |
+| `X-Trace-ID` | No | Explicit trace continuity across requests |
+| `X-Thread-ID` | No | Alternative continuity header; treated similarly to `X-Trace-ID` |
+
+## What the proxy adds to responses
+
+WhyOps preserves upstream responses but adds trace continuity metadata:
+
+- `X-Trace-ID`
+- `X-Thread-ID`
+
+For non-streaming responses, WhyOps may also inject `_whyops_trace_id` into returned tool call arguments so your runtime can propagate the same trace into downstream tool execution.
+
+## Event pipeline created automatically
+
+When you send an OpenAI request through the proxy, WhyOps emits the following event flow to `whyops-analyse`:
+
+1. `user_message` or `tool_result`
+2. `llm_response`
+3. `error` if the upstream provider fails
+4. `embedding_request` and `embedding_response` for `/embeddings`
+
+That means you get traces even with zero manual instrumentation.
+
 ## How WhyOps handles OpenAI Data
 
 1. **Invisible Signatures**: WhyOps will inject zero-width unicode characters into the `content` of the assistant's response. When your agent sends the next message in the conversation, WhyOps strips these characters before forwarding the request to OpenAI.
 2. **Tool Call Tracing**: For non-streaming requests, WhyOps injects a `_whyops_trace_id` argument into the JSON arguments of tool calls.
 3. **Streaming Parsing**: If you set `stream: true`, WhyOps uses a custom SSE parser (`OpenAIParser`) to silently read the stream as it passes through to your application, ensuring no latency is added while still capturing complete telemetry.
+4. **Provider Resolution**: WhyOps resolves the correct upstream provider credentials from your configured provider records based on requested model and environment.
+5. **Server-Timing**: WhyOps adds `Server-Timing` headers including auth time and total request duration for easier latency debugging.
+
+## When to add manual events on top
+
+OpenAI proxying is enough for prompt/response observability.
+
+Add manual events when you want visibility into:
+
+- actual tool execution latency and outputs
+- runtime retries not visible to the model
+- framework state changes
+- app-side failures after an LLM returns a tool call

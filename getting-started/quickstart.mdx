@@ -12,7 +12,34 @@ WhyOps acts as a drop-in API proxy for LLM providers like OpenAI and Anthropic. 
 3. Navigate to **API Keys** and generate a new key.
 4. Add your provider API keys (OpenAI, Anthropic) in the **Providers** section of the dashboard.
 
-## 2. Update your Base URL
+## 2. Register your agent
+
+Before sending traffic, register the agent configuration you want WhyOps to track.
+
+```bash
+curl -X POST https://proxy.whyops.com/v1/agents/init \
+  -H "Authorization: Bearer $WHYOPS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agentName": "my-customer-support-agent",
+    "metadata": {
+      "systemPrompt": "You are a helpful support assistant.",
+      "description": "Production support agent",
+      "tools": [
+        {
+          "name": "search_orders",
+          "inputSchema": "{\"type\":\"object\",\"properties\":{\"orderId\":{\"type\":\"string\"}},\"required\":[\"orderId\"]}",
+          "outputSchema": "{\"type\":\"object\",\"properties\":{\"status\":{\"type\":\"string\"}}}",
+          "description": "Look up order status"
+        }
+      ]
+    }
+  }'
+```
+
+WhyOps creates or reuses a versioned agent definition from this payload.
+
+## 3. Update your Base URL
 
 Configure your existing OpenAI or Anthropic SDKs to point to the WhyOps proxy.
 
@@ -62,11 +89,28 @@ Configure your existing OpenAI or Anthropic SDKs to point to the WhyOps proxy.
   You must provide the `X-Agent-Name` header on every request to identify which agent is making the call.
 </Callout>
 
-## 3. View your Traces
+<Callout type="tip" title="Optional trace continuity headers">
+  If your framework exposes a natural request context, you can also send `X-Trace-ID` or `X-Thread-ID`. If you do not, WhyOps automatically uses invisible signatures to keep the trace stitched together.
+</Callout>
+
+## 4. View your Traces
 
 Once your agent makes a request, WhyOps automatically injects **Invisible Signatures** to tie follow-up tool calls and context windows into a single trace. 
 
 Navigate to the **Traces** tab in the WhyOps Dashboard to view the real-time execution graphs.
+
+## 5. Add manual runtime events when needed
+
+The proxy captures LLM traffic automatically, but you can also send manual tool/runtime events to `whyops-analyse` for richer graphs and better static analysis.
+
+Use this when you want to log:
+
+- custom tool execution
+- framework retries
+- runtime errors
+- internal reasoning or orchestration milestones
+
+See [Manual Events](/integrations/manual-events).
 
 ## Next Steps
 

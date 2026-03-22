@@ -1,0 +1,130 @@
+---
+title: "Agent Workspace"
+description: "What exists on the agent details page in the UI: overview, analysis, evals, and configuration."
+---
+
+The agent details page is the operational center for a single agent in WhyOps.
+
+It is organized into four tabs:
+
+- `Overview`
+- `Analysis`
+- `Evals`
+- `Configuration`
+
+## Overview
+
+The overview tab is built for day-to-day runtime monitoring.
+
+It shows:
+
+- agent header and current version context
+- summary stats for trace volume and recent activity
+- success-rate timeline
+- trace-count timeline
+- recent traces table
+
+These views are powered by `GET /api/entities/:id` and related trace queries.
+
+## Analysis
+
+The analysis tab is where you run and review **agent analysis runs**.
+
+This tab supports:
+
+- manual analysis runs
+- configurable lookback windows
+- analysis modes: `quick`, `standard`, `deep`
+- custom judge model selection
+- dimension selection
+- scheduled analysis config using cron + timezone
+- streaming checkpoints during execution
+- run history and detailed result inspection
+
+### Backend APIs used
+
+- `POST /api/agent-analyses/:agentId/run`
+- `GET /api/agent-analyses/:agentId/latest`
+- `GET /api/agent-analyses/:agentId/runs`
+- `GET /api/agent-analyses/runs/:runId`
+- `GET /api/agent-analyses/:agentId/config`
+- `PUT /api/agent-analyses/:agentId/config`
+
+### Streaming behavior
+
+If the client requests streaming with `Accept: application/x-ndjson` or `?stream=true`, the backend streams checkpoint snapshots as NDJSON chunks while analysis is running.
+
+That is why the UI can show live progress toasts and in-flight section updates.
+
+## Evals
+
+The evals tab is the test-generation and knowledge-profile workspace.
+
+It includes:
+
+- synthetic eval generation controls
+- category selection
+- optional custom prompt and judge model
+- eval generation schedules
+- run history
+- export as JSON
+- export as Promptfoo YAML
+- knowledge profile view
+- explicit knowledge profile rebuild
+
+### Backend APIs used
+
+- `POST /api/evals/:agentId/generate`
+- `GET /api/evals/:agentId/latest`
+- `GET /api/evals/:agentId/runs`
+- `GET /api/evals/:agentId/runs/:runId`
+- `GET /api/evals/:agentId/cases`
+- `GET /api/evals/:agentId/config`
+- `PUT /api/evals/:agentId/config`
+- `GET /api/evals/:agentId/export/json`
+- `GET /api/evals/:agentId/export/promptfoo`
+- `GET /api/evals/:agentId/knowledge-profile`
+- `POST /api/evals/:agentId/knowledge-profile/rebuild`
+
+### Intelligence-building state
+
+One subtle feature in the backend is that eval generation can return an `intelligence_building` state instead of a finished run.
+
+That happens when WhyOps first needs to gather external knowledge before generating a strong eval suite. The UI already supports this state and tells the user that background knowledge gathering is in progress.
+
+## Configuration
+
+The configuration tab focuses on versioned agent setup and runtime settings.
+
+It lets users inspect:
+
+- current and historical versions
+- version hashes
+- system prompt
+- tool definitions
+- raw metadata
+- sampling rate
+- runtime limits
+
+### Backend APIs used
+
+- `GET /api/entities/:id/version-ids`
+- `GET /api/entities/versions/:versionId`
+- `PATCH /api/entities/:id/sampling-rate`
+- `GET /api/agent-settings/:id`
+- `PATCH /api/agent-settings/:id`
+- `DELETE /api/agent-settings/:id`
+- `GET /api/agent-settings/limits`
+
+## Why this matters
+
+This page is where WhyOps turns raw observability into an operational workflow:
+
+1. inspect current health
+2. investigate recent traces
+3. run deeper analysis
+4. generate regression evals
+5. review prompt and tool versions
+6. tune runtime settings
+
+It is not just a trace viewer - it is the full lifecycle workspace for one production agent.
