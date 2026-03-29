@@ -1,0 +1,158 @@
+---
+title: "TypeScript SDK"
+description: "Setup guide for @whyops/sdk, including install, client creation, proxy helpers, and deployment configuration."
+---
+
+`@whyops/sdk` is the highest-leverage integration for Node.js, Bun, and modern server-side TypeScript apps. It combines agent registration, proxy patching, and manual runtime events behind one client.
+
+<CardGroup cols={2}>
+  <Card title="Runtime Events Guide" icon="diagram-project" href="/integrations/typescript-sdk-runtime">
+    Manual traces, cache-aware usage payloads, tool span patterns, and hybrid instrumentation.
+  </Card>
+  <Card title="SDK Packages Hub" icon="box-open" href="/integrations/sdk-packages">
+    Compare TypeScript, Python, and Go packages before choosing the integration pattern for each service.
+  </Card>
+</CardGroup>
+
+## Install
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npm install @whyops/sdk
+    ```
+  </Tab>
+  <Tab title="pnpm">
+    ```bash
+    pnpm add @whyops/sdk
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add @whyops/sdk
+    ```
+  </Tab>
+  <Tab title="bun">
+    ```bash
+    bun add @whyops/sdk
+    ```
+  </Tab>
+</Tabs>
+
+## Create the client once
+
+```ts
+import { WhyOps } from '@whyops/sdk';
+
+export const whyops = new WhyOps({
+  apiKey: process.env.WHYOPS_API_KEY!,
+  agentName: 'customer-support-agent',
+  agentMetadata: {
+    systemPrompt: 'You are a precise customer support assistant.',
+    description: 'Handles support, billing, and order status flows.',
+    tools: [
+      {
+        name: 'search_orders',
+        description: 'Look up order state by ID',
+        inputSchema: JSON.stringify({
+          type: 'object',
+          properties: { orderId: { type: 'string' } },
+          required: ['orderId'],
+        }),
+        outputSchema: JSON.stringify({
+          type: 'object',
+          properties: { status: { type: 'string' } },
+        }),
+      },
+    ],
+  },
+});
+```
+
+<Callout type="tip" title="Agent init behavior">
+  `trace()` methods auto-register the agent on first use. Call `await whyops.initAgent()` during boot if you want startup-time validation or deploy-time visibility.
+</Callout>
+
+## Choose the operating mode
+
+<Steps>
+  <Step title="Proxy mode">
+    Patch an OpenAI or Anthropic client when you want automatic capture of prompts, responses, tool calls, embeddings, and trace continuity.
+  </Step>
+  <Step title="Manual events mode">
+    Add `trace()` events when you need app-side tool timings, retries, orchestration state, or failures the proxy cannot see.
+  </Step>
+  <Step title="Hybrid mode">
+    Use both together when you want provider traffic from the proxy and richer runtime visibility from your application code.
+  </Step>
+</Steps>
+
+## Proxy mode
+
+<Tabs>
+  <Tab title="OpenAI helper">
+    ```ts
+    import OpenAI from 'openai';
+    import { whyops } from './whyops';
+
+    const openai = whyops.openai(
+      new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+    );
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: 'Where is order 123?' }],
+    });
+    ```
+  </Tab>
+  <Tab title="Anthropic helper">
+    ```ts
+    import Anthropic from '@anthropic-ai/sdk';
+    import { whyops } from './whyops';
+
+    const anthropic = whyops.anthropic(
+      new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }),
+    );
+
+    const message = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: 'Summarize this incident.' }],
+    });
+    ```
+  </Tab>
+  <Tab title="What the helper changes">
+    ```ts
+    // whyops.openai(client) mutates the client in place:
+    // - baseURL -> https://proxy.whyops.com
+    // - apiKey -> WHYOPS_API_KEY
+    // - Authorization -> Bearer WHYOPS_API_KEY
+    // - X-Agent-Name -> your stable agent name
+    //
+    // Keep a separate unpatched provider client if you still need direct calls.
+    ```
+  </Tab>
+</Tabs>
+
+## Self-hosted overrides
+
+```ts
+const whyops = new WhyOps({
+  apiKey: process.env.WHYOPS_API_KEY!,
+  agentName: 'customer-support-agent',
+  agentMetadata: { systemPrompt: 'You are helpful.', tools: [] },
+  proxyBaseUrl: 'https://proxy.internal.example.com',
+  analyseBaseUrl: 'https://analyse.internal.example.com/api',
+});
+```
+
+## Runtime instrumentation next
+
+<CardGroup cols={2}>
+  <Card title="TypeScript Runtime Events" icon="terminal" href="/integrations/typescript-sdk-runtime">
+    See manual trace calls, tool span pairing, prompt-caching token usage, and hybrid examples.
+  </Card>
+  <Card title="Raw Events API" icon="code" href="/integrations/manual-events">
+    Use the REST ingest API directly if you need language-agnostic event submission outside the SDK.
+  </Card>
+</CardGroup>

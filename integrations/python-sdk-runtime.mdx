@@ -1,0 +1,132 @@
+---
+title: "Python SDK Runtime Events"
+description: "Manual event patterns for the whyops Python package, including sync and async traces, tool spans, prompt caching usage, and hybrid setups."
+---
+
+Use the trace builder when you want the graph to include application-side runtime work that the provider proxy cannot observe directly.
+
+<CardGroup cols={2}>
+  <Card title="Setup Guide" icon="box-open" href="/integrations/python-sdk">
+    Install `whyops`, create the client, patch providers, and configure hosted or self-hosted endpoints.
+  </Card>
+  <Card title="Manual Events API" icon="code" href="/integrations/manual-events">
+    Compare the Python helpers with the raw REST ingest endpoint and event schema.
+  </Card>
+</CardGroup>
+
+## Manual events mode
+
+<Tabs>
+  <Tab title="Sync">
+    ```python
+    trace = sdk.trace("session-123")
+
+    trace.user_message_sync([
+        {"role": "user", "content": "Reset my password."}
+    ])
+
+    span_id = trace.tool_call_request_sync(
+        "search_orders",
+        [{"name": "search_orders", "arguments": {"orderId": "123"}}],
+        latency_ms=11,
+    )
+
+    trace.tool_call_response_sync(
+        "search_orders",
+        span_id,
+        [{"name": "search_orders", "arguments": {"orderId": "123"}}],
+        {"status": "shipped"},
+        latency_ms=88,
+    )
+
+    trace.llm_response_sync(
+        "openai/gpt-4o-mini",
+        "openai",
+        "Your order has shipped.",
+        finish_reason="stop",
+        latency_ms=390,
+        usage={"promptTokens": 42, "completionTokens": 16, "totalTokens": 58},
+    )
+    ```
+  </Tab>
+  <Tab title="Async">
+    ```python
+    trace = sdk.trace("session-123")
+
+    await trace.user_message([
+        {"role": "user", "content": "Reset my password."}
+    ])
+
+    span_id = await trace.tool_call_request(
+        "search_orders",
+        [{"name": "search_orders", "arguments": {"orderId": "123"}}],
+        latency_ms=11,
+    )
+
+    await trace.tool_call_response(
+        "search_orders",
+        span_id,
+        [{"name": "search_orders", "arguments": {"orderId": "123"}}],
+        {"status": "shipped"},
+        latency_ms=88,
+    )
+    ```
+  </Tab>
+</Tabs>
+
+## Prompt caching usage
+
+```python
+await trace.llm_response(
+    "anthropic/claude-sonnet-4-5",
+    "anthropic",
+    "Done.",
+    usage={
+        "promptTokens": 1200,
+        "completionTokens": 240,
+        "totalTokens": 9940,
+        "cacheReadTokens": 8200,
+        "cacheCreationTokens": 300,
+    },
+    latency_ms=860,
+)
+```
+
+Use `cacheReadTokens` and `cacheCreationTokens` when your runtime exposes cache-aware usage so the trace cost breakdown stays accurate.
+
+## Method map
+
+| Sync method | Async method | Purpose |
+|---|---|---|
+| `user_message_sync()` | `user_message()` | Log assembled user or system-facing messages |
+| `llm_response_sync()` | `llm_response()` | Log model output, finish reason, usage, and latency |
+| `llm_thinking_sync()` | `llm_thinking()` | Log explicit reasoning blocks |
+| `embedding_request_sync()` | `embedding_request()` | Log embedding inputs |
+| `embedding_response_sync()` | `embedding_response()` | Log embedding result summary |
+| `tool_call_request_sync()` | `tool_call_request()` | Start a tool call span and return `span_id` |
+| `tool_call_response_sync()` | `tool_call_response()` | Close the tool call span |
+| `tool_result_sync()` | `tool_result()` | Record tool output returned to the model |
+| `error_sync()` | `error()` | Record runtime or provider failures |
+
+## Hybrid pattern
+
+```python
+client = sdk.openai(OpenAI(api_key="YOUR_OPENAI_API_KEY"))
+trace = sdk.trace("checkout-8841")
+
+span_id = trace.tool_call_request_sync(
+    "charge_card",
+    [{"name": "charge_card", "arguments": {"amount": 4999, "currency": "usd"}}],
+)
+
+result = charge_card()
+
+trace.tool_call_response_sync(
+    "charge_card",
+    span_id,
+    [{"name": "charge_card", "arguments": {"amount": 4999, "currency": "usd"}}],
+    result,
+)
+```
+
+Use this when you want automatic provider capture from the proxy and explicit application-side timing for tools, jobs, queues, and failures.

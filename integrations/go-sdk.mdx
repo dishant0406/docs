@@ -1,0 +1,158 @@
+---
+title: "Go SDK"
+description: "Detailed guide for the WhyOps Go module: manual events, proxy-aware http transport, and self-hosted configuration."
+---
+
+The Go SDK is optimized for backend services that want strongly-typed runtime telemetry plus a reusable transport for provider requests.
+
+## Install
+
+<Tabs>
+  <Tab title="go get">
+    ```bash
+    go get github.com/whyops-org/whyops-op/packages/sdk-go@latest
+    ```
+  </Tab>
+  <Tab title="Module path">
+    ```txt
+    github.com/whyops-org/whyops-op/packages/sdk-go
+    ```
+  </Tab>
+</Tabs>
+
+## Create the client once
+
+```go
+package main
+
+import whyops "github.com/whyops-org/whyops-op/packages/sdk-go"
+
+var sdk = whyops.New(whyops.Config{
+	APIKey:    os.Getenv("WHYOPS_API_KEY"),
+	AgentName: "customer-support-agent",
+	AgentMetadata: whyops.AgentMetadata{
+		SystemPrompt: "You are a precise customer support assistant.",
+		Description:  "Handles support, billing, and order status flows.",
+		Tools: []whyops.AgentTool{
+			{
+				Name:         "search_orders",
+				Description:  "Look up order state by ID",
+				InputSchema:  `{"type":"object","properties":{"orderId":{"type":"string"}},"required":["orderId"]}`,
+				OutputSchema: `{"type":"object","properties":{"status":{"type":"string"}}}`,
+			},
+		},
+	},
+})
+```
+
+<Callout type="warning" title="Go proxy behavior">
+  `ProxyHTTPClient()` injects WhyOps headers, but it does not rewrite the destination host. Your provider SDK or raw HTTP request must still target the WhyOps proxy URL.
+</Callout>
+
+## Proxy mode
+
+<Tabs>
+  <Tab title="Raw HTTP example">
+    ```go
+    client := sdk.ProxyHTTPClient()
+
+    req, _ := http.NewRequest("POST", "https://proxy.whyops.com/v1/chat/completions", bytes.NewBuffer(body))
+    req.Header.Set("Content-Type", "application/json")
+
+    resp, err := client.Do(req)
+    ```
+  </Tab>
+  <Tab title="Provider SDK pattern">
+    ```go
+    // Use sdk.ProxyHTTPClient() anywhere your provider SDK accepts *http.Client.
+    //
+    // Then point that provider SDK at the WhyOps proxy base URL:
+    //   https://proxy.whyops.com        for Anthropic-style endpoints
+    //   https://proxy.whyops.com/v1     for OpenAI-style endpoints
+    //
+    // The exact constructor varies by provider library, but the pattern is:
+    //   1. supply ProxyHTTPClient()
+    //   2. set the provider base URL to the WhyOps proxy
+    ```
+  </Tab>
+</Tabs>
+
+## Manual events mode
+
+<Tabs>
+  <Tab title="Minimal trace">
+    ```go
+    trace := sdk.Trace("session-123")
+
+    _ = trace.UserMessage(ctx, []whyops.MessageItem{
+    	{Role: "user", Content: "Reset my password."},
+    }, whyops.UserMessageOptions{})
+
+    _ = trace.LLMResponse(ctx, "openai/gpt-4o-mini", "openai", "I can help with that.", whyops.LLMResponseOptions{
+    	LatencyMs:    420,
+    	FinishReason: "stop",
+    	Usage: &whyops.TokenUsage{
+    		PromptTokens:     42,
+    		CompletionTokens: 16,
+    		TotalTokens:      58,
+    	},
+    })
+    ```
+  </Tab>
+  <Tab title="Tool call pair">
+    ```go
+    spanID, _ := trace.ToolCallRequest(ctx, "search_orders",
+    	[]whyops.ToolCallPair{{Name: "search_orders", Arguments: map[string]any{"orderId": "123"}}},
+    	whyops.ToolCallRequestOptions{LatencyMs: 12},
+    )
+
+    _ = trace.ToolCallResponse(ctx, "search_orders", spanID,
+    	[]whyops.ToolCallPair{{Name: "search_orders", Arguments: map[string]any{"orderId": "123"}}},
+    	map[string]any{"status": "shipped"},
+    	whyops.ToolCallResponseOptions{LatencyMs: 91},
+    )
+    ```
+  </Tab>
+  <Tab title="Cache-aware usage">
+    ```go
+    _ = trace.LLMResponse(ctx, "anthropic/claude-sonnet-4-5", "anthropic", "Done.", whyops.LLMResponseOptions{
+    	LatencyMs: 860,
+    	Usage: &whyops.TokenUsage{
+    		PromptTokens:        1200,
+    		CompletionTokens:    240,
+    		TotalTokens:         9940,
+    		CacheReadTokens:     8200,
+    		CacheCreationTokens: 300,
+    	},
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Method map
+
+| Method | Purpose | Notes |
+|---|---|---|
+| `InitAgent(ctx)` | Explicit agent registration | Also runs automatically before first event |
+| `Trace(traceID)` | Create a trace builder | Use one trace per session, request, or workflow |
+| `UserMessage()` | Log user or assembled prompt input | Optional `SystemPrompt`, `Tools`, and `Params` |
+| `LLMResponse()` | Log model output | Supports `Usage`, `FinishReason`, `LatencyMs` |
+| `LLMThinking()` | Log explicit thinking blocks | Use when the runtime exposes reasoning |
+| `EmbeddingRequest()` | Log embedding inputs | Pairs with `EmbeddingResponse()` |
+| `EmbeddingResponse()` | Log embedding result summary | Includes total tokens and latency |
+| `ToolCallRequest()` | Start a tool span | Returns `spanID` |
+| `ToolCallResponse()` | Close the tool span | Reuse the `spanID` from the request |
+| `ToolResult()` | Record tool output returned to the model | Useful in hybrid setups |
+| `Error()` | Record runtime or provider failure | Supports `Status` and `Stack` |
+
+## Self-hosted overrides
+
+```go
+sdk := whyops.New(whyops.Config{
+	APIKey:         os.Getenv("WHYOPS_API_KEY"),
+	AgentName:      "customer-support-agent",
+	AgentMetadata:  whyops.AgentMetadata{SystemPrompt: "You are helpful."},
+	ProxyBaseURL:   "https://proxy.internal.example.com",
+	AnalyseBaseURL: "https://analyse.internal.example.com/api",
+})
+```

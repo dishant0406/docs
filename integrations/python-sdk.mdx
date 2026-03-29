@@ -1,0 +1,139 @@
+---
+title: "Python SDK"
+description: "Setup guide for the whyops Python package, including install, client creation, proxy helpers, and deployment configuration."
+---
+
+The `whyops` package is designed for Python services that want one SDK surface for agent registration, OpenAI or Anthropic proxying, and direct runtime event emission.
+
+<CardGroup cols={2}>
+  <Card title="Runtime Events Guide" icon="diagram-project" href="/integrations/python-sdk-runtime">
+    Sync and async trace calls, prompt-caching token usage, tool span patterns, and hybrid instrumentation.
+  </Card>
+  <Card title="SDK Packages Hub" icon="box-open" href="/integrations/sdk-packages">
+    Compare Python with the TypeScript and Go packages before choosing the right integration pattern.
+  </Card>
+</CardGroup>
+
+## Install
+
+<Tabs>
+  <Tab title="pip">
+    ```bash
+    pip install whyops
+    ```
+  </Tab>
+  <Tab title="uv">
+    ```bash
+    uv add whyops
+    ```
+  </Tab>
+  <Tab title="poetry">
+    ```bash
+    poetry add whyops
+    ```
+  </Tab>
+</Tabs>
+
+## Create the client once
+
+```python
+from whyops import WhyOps
+
+sdk = WhyOps(
+    api_key="YOUR_WHYOPS_API_KEY",
+    agent_name="customer-support-agent",
+    agent_metadata={
+        "systemPrompt": "You are a precise customer support assistant.",
+        "description": "Handles support, billing, and order status flows.",
+        "tools": [
+            {
+                "name": "search_orders",
+                "description": "Look up order state by ID",
+                "inputSchema": "{\"type\":\"object\",\"properties\":{\"orderId\":{\"type\":\"string\"}},\"required\":[\"orderId\"]}",
+                "outputSchema": "{\"type\":\"object\",\"properties\":{\"status\":{\"type\":\"string\"}}}",
+            }
+        ],
+    },
+)
+```
+
+<Callout type="tip" title="Sync and async are both first-class">
+  `init_agent_sync()` and `*_sync()` trace methods are for synchronous apps. `init_agent()` and async trace methods are for async frameworks and workers.
+</Callout>
+
+## Choose the operating mode
+
+<Steps>
+  <Step title="Proxy mode">
+    Patch an OpenAI or Anthropic client when you want automatic capture of provider requests and responses.
+  </Step>
+  <Step title="Manual events mode">
+    Use `trace()` calls when you need application-side tools, retries, failures, or orchestration steps in the graph.
+  </Step>
+  <Step title="Hybrid mode">
+    Combine the proxy and trace builder when the model traffic and the runtime work both matter for debugging.
+  </Step>
+</Steps>
+
+## Proxy mode
+
+<Tabs>
+  <Tab title="OpenAI helper">
+    ```python
+    from openai import OpenAI
+
+    client = sdk.openai(OpenAI(api_key="YOUR_OPENAI_API_KEY"))
+
+    completion = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Where is order 123?"}],
+    )
+    ```
+  </Tab>
+  <Tab title="Anthropic helper">
+    ```python
+    from anthropic import Anthropic
+
+    client = sdk.anthropic(Anthropic(api_key="YOUR_ANTHROPIC_API_KEY"))
+
+    message = client.messages.create(
+        model="claude-3-5-sonnet-20241022",
+        max_tokens=800,
+        messages=[{"role": "user", "content": "Summarize this incident."}],
+    )
+    ```
+  </Tab>
+  <Tab title="What the helper changes">
+    ```python
+    # sdk.openai(...) and sdk.anthropic(...) mutate the client in place:
+    # - base_url -> https://proxy.whyops.com
+    # - api_key -> WHYOPS_API_KEY
+    # - default_headers -> WhyOps auth + X-Agent-Name
+    #
+    # Keep a second unpatched provider client if you still need direct traffic.
+    ```
+  </Tab>
+</Tabs>
+
+## Self-hosted overrides
+
+```python
+sdk = WhyOps(
+    api_key="YOUR_WHYOPS_API_KEY",
+    agent_name="customer-support-agent",
+    agent_metadata={"systemPrompt": "You are helpful.", "tools": []},
+    proxy_base_url="https://proxy.internal.example.com",
+    analyse_base_url="https://analyse.internal.example.com/api",
+)
+```
+
+## Runtime instrumentation next
+
+<CardGroup cols={2}>
+  <Card title="Python Runtime Events" icon="terminal" href="/integrations/python-sdk-runtime">
+    See sync and async trace patterns, tool pairing, prompt-caching usage, and hybrid examples.
+  </Card>
+  <Card title="Raw Events API" icon="code" href="/integrations/manual-events">
+    Use direct REST ingestion if you need language-agnostic or non-SDK event submission.
+  </Card>
+</CardGroup>

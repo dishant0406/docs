@@ -14,6 +14,24 @@ That means registering:
 
 This registration creates an **Agent** plus a versioned **Entity** record behind the scenes. Every trace is later bound to the latest matching agent version for that `agentName`.
 
+<CardGroup cols={2}>
+  <Card title="TypeScript SDK Setup" icon="code" href="/integrations/typescript-sdk">
+    `@whyops/sdk` wraps this flow and auto-initializes on first trace event unless you call `initAgent()` explicitly during boot.
+  </Card>
+  <Card title="Python SDK Setup" icon="terminal" href="/integrations/python-sdk">
+    `whyops` exposes `init_agent_sync()` and `init_agent()` so you can register on startup in sync or async services.
+  </Card>
+</CardGroup>
+
+<CardGroup cols={2}>
+  <Card title="Agent Init Reference" icon="book" href="/integrations/agent-init-reference">
+    Request fields, response shape, direct analyse endpoint, auto-init fallback, and follow-up entity APIs.
+  </Card>
+  <Card title="SDK Packages" icon="box-open" href="/integrations/sdk-packages">
+    Compare the published integration packages before choosing your registration and tracing flow.
+  </Card>
+</CardGroup>
+
 ## Why this exists
 
 WhyOps uses agent registration for four things:
@@ -72,42 +90,9 @@ Content-Type: application/json
 }
 ```
 
-### Field requirements
-
-| Field | Type | Required | Notes |
-|---|---|---:|---|
-| `agentName` | `string` | Yes | 1-255 chars; must match the `X-Agent-Name` header you use later |
-| `metadata.systemPrompt` | `string` | Yes | Required for version hashing and UI display |
-| `metadata.tools` | `array` | Yes | Can be empty, but must be present |
-| `metadata.tools[].name` | `string` | Yes | Tool identifier |
-| `metadata.tools[].inputSchema` | `string` | Yes | JSON schema string, not an object |
-| `metadata.tools[].outputSchema` | `string` | Yes | JSON schema string, not an object |
-| `metadata.tools[].description` | `string` | Yes | Human-readable purpose |
-| `metadata.description` | `string` | No | Optional agent description |
-
 <Callout type="warning" title="Schema format">
   `inputSchema` and `outputSchema` are currently expected as strings by the backend, so send serialized JSON schema strings rather than nested JSON objects.
 </Callout>
-
-### Response
-
-```json
-{
-  "success": true,
-  "agentId": "1f4c4fd7-7f7b-45a3-92e0-0a8afeb1e7d1",
-  "agentVersionId": "5190db0c-6cd8-4700-9f66-16f80d013f34",
-  "status": "created",
-  "versionHash": "4f7c9d5c7de8b4ad9f1dbdbff8fbb32d"
-}
-```
-
-## Direct analyse endpoint
-
-If you are not using the proxy, you can call the analyse service directly:
-
-### `POST /api/entities/init`
-
-It accepts the exact same payload and returns the same response shape.
 
 ## What happens internally
 
@@ -117,18 +102,6 @@ When you call init:
 2. It computes a SHA-256-based hash from the `metadata` payload.
 3. If the latest version already has the same hash, WhyOps returns the existing version with `status: "existing"`.
 4. If the hash changed, WhyOps creates a new `Entity` version and carries forward the previous sampling rate.
-
-## Auto-init fallback
-
-If you forget to call init and instead start sending events first, `whyops-analyse` attempts a best-effort auto-initialization during trace creation.
-
-That fallback works by extracting:
-
-- `systemPrompt` from event metadata when possible
-- tool definitions from metadata when available
-- otherwise a placeholder description
-
-This is useful for resilience, but **not recommended as your primary workflow** because explicit init gives cleaner version history and better UI fidelity.
 
 ## When to call init
 
@@ -146,51 +119,6 @@ Use one of these patterns:
   </Tab>
 </Tabs>
 
-## Minimal TypeScript example
+## Full API contract
 
-```ts
-const res = await fetch("https://proxy.whyops.com/v1/agents/init", {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${process.env.WHYOPS_API_KEY}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    agentName: "customer-support-agent",
-    metadata: {
-      systemPrompt: "You are WhyOps Support. Help users with orders and billing.",
-      description: "Production support assistant",
-      tools: [
-        {
-          name: "search_orders",
-          inputSchema: JSON.stringify({
-            type: "object",
-            properties: { orderId: { type: "string" } },
-            required: ["orderId"],
-          }),
-          outputSchema: JSON.stringify({
-            type: "object",
-            properties: { status: { type: "string" } },
-          }),
-          description: "Fetch order status",
-        },
-      ],
-    },
-  }),
-});
-
-const data = await res.json();
-```
-
-## Related APIs after registration
-
-Once registered, the backend exposes more agent/version endpoints through `whyops-analyse`:
-
-- `GET /api/entities` - list agents with usage and latest version
-- `GET /api/entities/:id` - get one agent with versions and timelines
-- `GET /api/entities/:id/version-ids` - list version IDs for an agent
-- `GET /api/entities/versions/:versionId` - inspect one exact version
-- `PATCH /api/entities/:id/sampling-rate` - update version sampling rate
-- `DELETE /api/entities/:id` - hard-delete an agent and linked runtime data
-
-If you are documenting your own customer integration, this is the lifecycle to explain: **register -> send traffic -> inspect traces -> tune settings -> evaluate**.
+For field-level requirements, response payloads, the direct analyse endpoint, auto-init fallback behavior, and the entity follow-up APIs, see [Agent Init Reference](/integrations/agent-init-reference).

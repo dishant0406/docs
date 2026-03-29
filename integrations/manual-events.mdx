@@ -3,9 +3,7 @@ title: "Manual Events (REST API)"
 description: "Send telemetry directly to whyops-analyse, including detailed event schemas, pipeline behavior, and tool/runtime use cases."
 ---
 
-While the WhyOps Proxy is the easiest way to instrument your agents automatically, you may have custom tools, non-LLM reasoning steps, or internal framework logic that you want to visualize in your decision graph.
-
-You can send events directly to the `whyops-analyse` service using our REST API.
+While the WhyOps Proxy is the easiest way to instrument your agents automatically, you can send events directly to `whyops-analyse` when you need custom tools, non-LLM reasoning steps, or internal framework logic in the graph.
 
 ## When to use manual events
 
@@ -17,9 +15,18 @@ Use manual events for anything the proxy cannot see by itself:
 - runtime crashes after the LLM asked for a tool
 - internal thinking blocks or planning state you choose to expose
 
+<CardGroup cols={2}>
+  <Card title="Manual Events Reference" icon="book" href="/integrations/manual-events-reference">
+    Detailed event payload shapes, recommended runtime patterns, idempotency guidance, and tool pipeline examples.
+  </Card>
+  <Card title="SDK Runtime Guides" icon="diagram-project" href="/integrations/sdk-packages">
+    Use the published SDKs if you want the same event model with typed helpers instead of raw JSON payloads.
+  </Card>
+</CardGroup>
+
 ## Endpoint Overview
 
-**Base URL**: `https://api.whyops.com/api` (or your self-hosted URL)
+**Base URL**: `https://a.whyops.com/api` (or your self-hosted URL)
 
 **Authentication**: 
 You must include an API key generated from the WhyOps Dashboard in the `Authorization` header.
@@ -52,16 +59,7 @@ flowchart LR
 
 ### What happens on ingest
 
-When you send an event to `/api/events/ingest`:
-
-1. WhyOps validates the payload with Zod.
-2. It merges auth context from API key or explicit headers.
-3. It attempts to enqueue the event into the Redis stream.
-4. The analyse worker reads the queue and processes events sequentially per trace.
-5. Sampling is resolved at the trace level.
-6. The trace is created if needed.
-7. Step IDs, parent IDs, and span IDs are resolved when absent.
-8. The event is persisted to `trace_events`.
+WhyOps validates the payload, merges auth context, enqueues the event when Redis is available, processes it sequentially per trace, resolves sampling plus missing step or span identifiers, and persists the final event to `trace_events`.
 
 If queueing is unavailable, the controller falls back to direct synchronous processing.
 
@@ -76,7 +74,7 @@ Accepts a single event object or an array of event objects.
 <Tabs>
   <Tab title="Request">
     ```bash
-    curl -X POST https://api.whyops.com/api/events/ingest \
+    curl -X POST https://a.whyops.com/api/events/ingest \
       -H "Authorization: Bearer YOUR_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -101,6 +99,15 @@ Accepts a single event object or an array of event objects.
   </Tab>
 </Tabs>
 
+<CardGroup cols={2}>
+  <Card title="TypeScript Runtime Guide" icon="code" href="/integrations/typescript-sdk-runtime">
+    Use the `@whyops/sdk` trace builder instead of hand-rolling the event payloads in Node.js or Bun services.
+  </Card>
+  <Card title="Python Runtime Guide" icon="terminal" href="/integrations/python-sdk-runtime">
+    Use the `whyops` sync and async trace helpers instead of posting raw REST payloads in Python services.
+  </Card>
+</CardGroup>
+
 ### Response behavior
 
 - `202 Accepted` when the event was queued successfully
@@ -120,29 +127,12 @@ Typical queued response:
 
 ## Other useful endpoints
 
-### `POST /api/events`
+- `POST /api/events` processes events directly instead of queue-first and accepts the same payload shape.
+- `POST /api/events/tool-result` is a convenience endpoint that automatically sets `eventType: "tool_call_response"`.
+- `GET /api/events/help` returns the machine-readable help payload for supported event types.
+- `GET /api/events?traceId=...&include=content,metadata` and `GET /api/events/:id?include=content,metadata` let you inspect stored events while debugging.
 
-Processes events directly instead of queue-first. Same payload shape.
-
-### `POST /api/events/tool-result`
-
-Convenience endpoint that automatically sets `eventType: "tool_call_response"`.
-
-Use this when you only want to submit tool outputs and do not want to specify the event type yourself.
-
-### `GET /api/events/help`
-
-Returns the machine-readable help payload the backend exposes for supported event types.
-
-### `GET /api/events?traceId=...&include=content,metadata`
-
-Lists stored events.
-
-### `GET /api/events/:id?include=content,metadata`
-
-Fetches one stored event.
-
-## Event Schema
+## Event schema summary
 
 Every event you send must conform to this schema:
 
@@ -172,7 +162,7 @@ If you do not send `spanId`, WhyOps generates one for you.
 - explicitly set `spanId` for request/response pairs
 - optionally let WhyOps generate `stepId` unless you already have a stable internal step model
 
-## Allowed Event Types
+## Allowed event types
 
 To ensure accurate static analysis and graph rendering, you must use one of the predefined event types.
 
@@ -192,338 +182,6 @@ To ensure accurate static analysis and graph rendering, you must use one of the 
 ### Errors
 - `error`: upstream API failures, tool crashes, framework exceptions, or app-side failures.
 
-## Detailed input shapes by event type
+## Detailed payload reference
 
-### `user_message`
-
-**Use case**
-
-- user prompt entered your system
-- you want to log the exact chat history your orchestrator assembled
-
-**Typical content**
-
-```json
-[
-  { "role": "system", "content": "You are helpful." },
-  { "role": "user", "content": "Where is my order?" }
-]
-```
-
-**Useful metadata**
-
-```json
-{
-  "model": "gpt-4o",
-  "provider": "openai",
-  "systemPrompt": "You are helpful.",
-  "tools": [{ "name": "search_orders" }],
-  "params": { "temperature": 0.2 }
-}
-```
-
-### `llm_response`
-
-**Use case**
-
-- store the model output
-- capture generated tool calls
-- preserve token and latency data for analytics
-
-**Required metadata**
-
-```json
-{
-  "model": "gpt-4o",
-  "provider": "openai"
-}
-```
-
-**Typical content**
-
-```json
-{
-  "content": "Your order has shipped.",
-  "toolCalls": [],
-  "finishReason": "stop"
-}
-```
-
-or with tool calls:
-
-```json
-{
-  "content": null,
-  "toolCalls": [
-    {
-      "function": {
-        "name": "search_orders",
-        "arguments": "{\"orderId\":\"123\"}"
-      }
-    }
-  ],
-  "finishReason": "tool_calls"
-}
-```
-
-### `embedding_request`
-
-**Use case**
-
-- track RAG embedding generation volume and inputs
-
-**Typical content**
-
-```json
-{
-  "input": ["refund policy", "shipping times"]
-}
-```
-
-### `embedding_response`
-
-**Use case**
-
-- summarize embedding response for analytics without storing full vectors
-
-**Required metadata**
-
-```json
-{
-  "model": "text-embedding-3-large",
-  "provider": "openai",
-  "usage": { "totalTokens": 32 },
-  "latencyMs": 180
-}
-```
-
-**Typical content**
-
-```json
-{
-  "object": "list",
-  "embeddingCount": 2,
-  "firstEmbeddingDimensions": 3072,
-  "encodingFormat": "float"
-}
-```
-
-### `llm_thinking`
-
-**Use case**
-
-- store reasoning blocks from providers that expose them
-
-**Typical content**
-
-```json
-{
-  "type": "thinking",
-  "thinking": "Need to verify the order ID before answering.",
-  "signature": "sig_abc123"
-}
-```
-
-### `tool_call`
-
-**Use case**
-
-- legacy or simplified integrations where you want the backend to generate both request and response events
-
-**Important behavior**
-
-If you send `tool_call`, the backend converts it into:
-
-1. `tool_call_request`
-2. `tool_call_response`
-
-It generates a shared `spanId`, uses the previous event timestamp for the request side, and current timestamp for the response side.
-
-**Typical content**
-
-```json
-{
-  "toolCalls": [
-    {
-      "name": "search_orders",
-      "arguments": { "orderId": "123" }
-    }
-  ],
-  "toolResults": {
-    "status": "shipped"
-  }
-}
-```
-
-### `tool_call_request`
-
-**Use case**
-
-- your application is about to invoke a tool
-- you want request/response latency and missing-response detection
-
-**Required metadata**
-
-```json
-{
-  "tool": "search_orders"
-}
-```
-
-**Typical content**
-
-```json
-{
-  "toolCalls": [
-    {
-      "name": "search_orders",
-      "arguments": { "orderId": "123" }
-    }
-  ],
-  "requestedAt": "2024-03-20T12:00:00.000Z"
-}
-```
-
-### `tool_call_response`
-
-**Use case**
-
-- your tool finished running and returned output
-- you want the exact output and measured latency in WhyOps
-
-**Required metadata**
-
-```json
-{
-  "tool": "search_orders",
-  "latencyMs": 242
-}
-```
-
-**Typical content**
-
-```json
-{
-  "toolCalls": [
-    {
-      "name": "search_orders",
-      "arguments": { "orderId": "123" }
-    }
-  ],
-  "toolResults": {
-    "status": "shipped",
-    "carrier": "UPS"
-  },
-  "respondedAt": "2024-03-20T12:00:00.242Z"
-}
-```
-
-### `tool_result`
-
-**Use case**
-
-- your framework converted tool output into a model-facing tool result message
-- you want to log what the LLM effectively received
-
-**Typical content**
-
-```json
-{
-  "toolName": "search_orders",
-  "output": {
-    "status": "shipped"
-  }
-}
-```
-
-### `error`
-
-**Use case**
-
-- upstream provider failed
-- tool timed out
-- framework crashed
-- your code rejected malformed tool arguments
-
-**Typical content**
-
-```json
-{
-  "message": "Tool timed out",
-  "status": 504
-}
-```
-
-## Recommended patterns by use case
-
-### If you only use the proxy
-
-Send no manual events. You already get prompt/response traces automatically.
-
-### If you want full tool observability
-
-Emit this sequence:
-
-1. proxy-generated `llm_response` with tool call
-2. manual `tool_call_request`
-3. manual `tool_call_response`
-4. proxy-generated or manual `tool_result`
-
-### If your framework retries tools internally
-
-Emit one request/response pair per retry using different `spanId` values so WhyOps can show the retry pattern visually.
-
-### If your orchestrator is not chat-based
-
-Use `user_message` and `llm_response` anyway; the names are logical event categories, not hard requirements on framework shape.
-
-## Example: complete tool execution pipeline
-
-```mermaid
-sequenceDiagram
-  participant App
-  participant Proxy
-  participant Model
-  participant Analyse
-  participant Tool
-
-  App->>Proxy: OpenAI request
-  Proxy->>Analyse: user_message
-  Proxy->>Model: forward request
-  Model-->>Proxy: tool call
-  Proxy->>Analyse: llm_response
-  App->>Analyse: tool_call_request
-  App->>Tool: execute tool
-  Tool-->>App: output
-  App->>Analyse: tool_call_response
-  App->>Proxy: follow-up tool result request
-  Proxy->>Analyse: tool_result
-  Proxy->>Analyse: llm_response
-```
-
-## Idempotency and deduplication
-
-- If you provide `idempotencyKey`, WhyOps uses it to skip duplicates.
-- If you do not provide one, WhyOps may derive one from content hash for most event types.
-- `tool_call_request` and `tool_call_response` intentionally skip content-hash-based idempotency, because repeated tool calls with similar payloads can be legitimate retries.
-
-## Auto trace creation and agent binding
-
-When the first event of a trace arrives, WhyOps creates a `Trace` record automatically.
-
-During that process it:
-
-- resolves the latest registered agent version by `agentName`
-- creates the agent automatically if needed using best-effort metadata extraction
-- binds the trace to the resolved entity version
-
-If the same `traceId` later arrives with a different resolved agent version, WhyOps returns a conflict to protect trace consistency.
-
-## Best Practices for Manual Events
-
-1. **Use Span IDs for Tool Calls**: When you emit a `tool_call_request` and later emit the `tool_call_response`, give them both the exact same `spanId`. Our static analysis uses this to detect hanging/orphan tool calls.
-2. **Include Latency**: In the `metadata` object, include a `latencyMs` field. We use this to build performance distributions and flag outliers in the UI.
-3. **Batching**: You can pass an array of events to `/api/events/ingest` to reduce network overhead.
-4. **Register agents explicitly**: Prefer [Agent Init and Registration](/integrations/agent-init) before sending traffic.
-5. **Always send `metadata.model` and `metadata.provider` for response events**: `llm_response` and `embedding_response` require them.
-6. **Use `include=content,metadata` when debugging**: the read endpoints omit heavy fields unless requested.
+The full payload catalog, runtime patterns, idempotency rules, and tool pipeline examples are documented in [Manual Events Reference](/integrations/manual-events-reference).

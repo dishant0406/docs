@@ -1,0 +1,103 @@
+---
+title: "Agent Init Reference"
+description: "Request fields, response shape, fallback behavior, and related entity APIs for WhyOps agent registration."
+---
+
+Use this page when you need the exact registration payload and follow-up API behavior behind `POST /v1/agents/init`.
+
+<CardGroup cols={2}>
+  <Card title="Agent Init Overview" icon="fingerprint" href="/integrations/agent-init">
+    Start with the deployment flow, versioning rationale, and registration strategy.
+  </Card>
+  <Card title="TypeScript SDK Setup" icon="code" href="/integrations/typescript-sdk">
+    `@whyops/sdk` wraps agent init and auto-registers on first trace event unless you call `initAgent()` explicitly.
+  </Card>
+</CardGroup>
+
+## Field requirements
+
+| Field | Type | Required | Notes |
+|---|---|---:|---|
+| `agentName` | `string` | Yes | 1-255 chars; must match the `X-Agent-Name` header you use later |
+| `metadata.systemPrompt` | `string` | Yes | Required for version hashing and UI display |
+| `metadata.tools` | `array` | Yes | Can be empty, but must be present |
+| `metadata.tools[].name` | `string` | Yes | Tool identifier |
+| `metadata.tools[].inputSchema` | `string` | Yes | JSON schema string, not an object |
+| `metadata.tools[].outputSchema` | `string` | Yes | JSON schema string, not an object |
+| `metadata.tools[].description` | `string` | Yes | Human-readable purpose |
+| `metadata.description` | `string` | No | Optional agent description |
+
+## Response shape
+
+```json
+{
+  "success": true,
+  "agentId": "1f4c4fd7-7f7b-45a3-92e0-0a8afeb1e7d1",
+  "agentVersionId": "5190db0c-6cd8-4700-9f66-16f80d013f34",
+  "status": "created",
+  "versionHash": "4f7c9d5c7de8b4ad9f1dbdbff8fbb32d"
+}
+```
+
+## Direct analyse endpoint
+
+If you are not using the proxy, call `POST /api/entities/init` on the analyse service. It accepts the same payload and returns the same response shape.
+
+## Auto-init fallback
+
+If you skip explicit registration and start sending events first, `whyops-analyse` attempts best-effort auto-initialization during trace creation.
+
+- It extracts `systemPrompt` from event metadata when possible.
+- It infers tool definitions from event metadata when available.
+- Otherwise it creates a placeholder description.
+
+This is useful for resilience, but it is not the preferred workflow because explicit init gives cleaner version history and better UI fidelity.
+
+## Minimal TypeScript example
+
+```ts
+const res = await fetch("https://proxy.whyops.com/v1/agents/init", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.WHYOPS_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    agentName: "customer-support-agent",
+    metadata: {
+      systemPrompt: "You are WhyOps Support. Help users with orders and billing.",
+      description: "Production support assistant",
+      tools: [
+        {
+          name: "search_orders",
+          inputSchema: JSON.stringify({
+            type: "object",
+            properties: { orderId: { type: "string" } },
+            required: ["orderId"],
+          }),
+          outputSchema: JSON.stringify({
+            type: "object",
+            properties: { status: { type: "string" } },
+          }),
+          description: "Fetch order status",
+        },
+      ],
+    },
+  }),
+});
+
+const data = await res.json();
+```
+
+## Related entity APIs
+
+- `GET /api/entities` lists agents with usage and latest version.
+- `GET /api/entities/:id` returns one agent with versions and timelines.
+- `GET /api/entities/:id/version-ids` lists version IDs for an agent.
+- `GET /api/entities/versions/:versionId` fetches one exact version.
+- `PATCH /api/entities/:id/sampling-rate` updates version sampling rate.
+- `DELETE /api/entities/:id` hard-deletes an agent and linked runtime data.
+
+## Lifecycle reminder
+
+The integration lifecycle is: `register -> send traffic -> inspect traces -> tune settings -> evaluate`.

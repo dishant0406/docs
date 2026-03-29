@@ -1,0 +1,135 @@
+---
+title: "TypeScript SDK Runtime Events"
+description: "Manual event patterns for @whyops/sdk, including tool spans, prompt caching usage, hybrid setups, and event semantics."
+---
+
+Use the runtime trace builder when you want visibility beyond what the proxy can infer from provider traffic alone.
+
+<CardGroup cols={2}>
+  <Card title="Setup Guide" icon="box-open" href="/integrations/typescript-sdk">
+    Install `@whyops/sdk`, create the client, patch providers, and configure hosted or self-hosted endpoints.
+  </Card>
+  <Card title="Manual Events API" icon="code" href="/integrations/manual-events">
+    Compare the TypeScript helpers with the raw ingest endpoint and event schema.
+  </Card>
+</CardGroup>
+
+## Minimal trace
+
+<Tabs>
+  <Tab title="Prompt + response">
+    ```ts
+    const trace = whyops.trace('session-123');
+
+    await trace.userMessage(
+      [{ role: 'user', content: 'Reset my password.' }],
+      { metadata: { systemPrompt: 'You are a support assistant.' } },
+    );
+
+    await trace.llmResponse('openai/gpt-4o-mini', 'openai', 'I can help with that.', {
+      finishReason: 'stop',
+      latencyMs: 420,
+      usage: {
+        promptTokens: 42,
+        completionTokens: 16,
+        totalTokens: 58,
+      },
+    });
+    ```
+  </Tab>
+  <Tab title="Thinking block">
+    ```ts
+    await trace.llmThinking('I should verify the order before replying.', {
+      signature: 'anthropic-thinking-signature',
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Tool spans
+
+<Tabs>
+  <Tab title="Request + response pair">
+    ```ts
+    const spanId = await trace.toolCallRequest(
+      'search_orders',
+      [{ name: 'search_orders', arguments: { orderId: '123' } }],
+      { latencyMs: 12 },
+    );
+
+    await trace.toolCallResponse(
+      'search_orders',
+      spanId,
+      [{ name: 'search_orders', arguments: { orderId: '123' } }],
+      { status: 'shipped' },
+      { latencyMs: 91 },
+    );
+    ```
+  </Tab>
+  <Tab title="Tool result returned to model">
+    ```ts
+    await trace.toolResult(
+      'search_orders',
+      { status: 'shipped', eta: '2026-03-29' },
+      { spanId: 'tool-span-123' },
+    );
+    ```
+  </Tab>
+</Tabs>
+
+<Callout type="info" title="Span pairing">
+  `toolCallRequest()` returns a `spanId`. Reuse that same value in `toolCallResponse()` so the UI can treat the execution as a single tool span.
+</Callout>
+
+## Prompt caching usage
+
+```ts
+await trace.llmResponse('anthropic/claude-sonnet-4-5', 'anthropic', 'Done.', {
+  usage: {
+    promptTokens: 1200,
+    completionTokens: 240,
+    totalTokens: 9940,
+    cacheReadTokens: 8200,
+    cacheCreationTokens: 300,
+  },
+  latencyMs: 860,
+});
+```
+
+Use `cacheReadTokens` for tokens served from cache and `cacheCreationTokens` for tokens written into cache when your runtime exposes those values.
+
+## Event map
+
+| Method | Purpose | Key options |
+|---|---|---|
+| `userMessage()` | Log assembled chat input | `metadata.systemPrompt`, `metadata.tools`, `spanId`, `stepId` |
+| `llmResponse()` | Log model output or tool calls | `toolCalls`, `finishReason`, `usage`, `latencyMs` |
+| `llmThinking()` | Log exposed thinking blocks | `signature` |
+| `embeddingRequest()` | Log embedding inputs | `spanId`, `stepId` |
+| `embeddingResponse()` | Log embedding result summary | `totalTokens`, `latencyMs` |
+| `toolCallRequest()` | Start a tool call span | `requestedAt`, `latencyMs`; returns `spanId` |
+| `toolCallResponse()` | Close the tool call span | `respondedAt`, `latencyMs` |
+| `toolResult()` | Record tool output returned to the model | `spanId`, `stepId` |
+| `error()` | Record runtime or provider failures | `status`, `stack` |
+
+## Hybrid pattern
+
+```ts
+const openai = whyops.openai(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
+const trace = whyops.trace('checkout-8841');
+
+const spanId = await trace.toolCallRequest('charge_card', [
+  { name: 'charge_card', arguments: { amount: 4999, currency: 'usd' } },
+]);
+
+const result = await chargeCard();
+
+await trace.toolCallResponse(
+  'charge_card',
+  spanId,
+  [{ name: 'charge_card', arguments: { amount: 4999, currency: 'usd' } }],
+  result,
+);
+```
+
+Use this when the proxy already captures the LLM exchange, but you still want application-side latency and outcomes for tools, queue jobs, or downstream APIs.

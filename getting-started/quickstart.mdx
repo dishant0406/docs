@@ -39,7 +39,23 @@ curl -X POST https://proxy.whyops.com/v1/agents/init \
 
 WhyOps creates or reuses a versioned agent definition from this payload.
 
-## 3. Update your Base URL
+## 3. Choose your integration path
+
+<CardGroup cols={3}>
+  <Card title="TypeScript / JavaScript SDK" icon="code" href="/integrations/typescript-sdk">
+    Use `@whyops/sdk` when you want a single package for agent init, proxy patching, and manual runtime events.
+  </Card>
+  <Card title="Python SDK" icon="terminal" href="/integrations/python-sdk">
+    Use `whyops` for sync and async tracing, plus OpenAI and Anthropic proxy helpers.
+  </Card>
+  <Card title="Go SDK" icon="diagram-project" href="/integrations/go-sdk">
+    Use the Go module for manual events and a proxy-aware `http.Client` transport.
+  </Card>
+</CardGroup>
+
+If you want the fastest path with the published SDK packages, start at [SDK Packages](/integrations/sdk-packages).
+
+## 4. Update your Base URL
 
 Configure your existing OpenAI or Anthropic SDKs to point to the WhyOps proxy.
 
@@ -93,13 +109,13 @@ Configure your existing OpenAI or Anthropic SDKs to point to the WhyOps proxy.
   If your framework exposes a natural request context, you can also send `X-Trace-ID` or `X-Thread-ID`. If you do not, WhyOps automatically uses invisible signatures to keep the trace stitched together.
 </Callout>
 
-## 4. View your Traces
+## 5. View your Traces
 
 Once your agent makes a request, WhyOps automatically injects **Invisible Signatures** to tie follow-up tool calls and context windows into a single trace. 
 
 Navigate to the **Traces** tab in the WhyOps Dashboard to view the real-time execution graphs.
 
-## 5. Add manual runtime events when needed
+## 6. Add manual runtime events when needed
 
 The proxy captures LLM traffic automatically, but you can also send manual tool/runtime events to `whyops-analyse` for richer graphs and better static analysis.
 
@@ -114,5 +130,6 @@ See [Manual Events](/integrations/manual-events).
 
 ## Next Steps
 
+- Start with the [SDK Packages overview](/integrations/sdk-packages).
 - Learn how [Invisible Signatures](/core-concepts/invisible-signatures) work.
 - See how to configure [Agent Analyses](/core-concepts/evaluations-and-analysis).

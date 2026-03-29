@@ -5,6 +5,15 @@ description: "Use WhyOps as a drop-in proxy for the Anthropic API."
 
 WhyOps supports Anthropic's Claude models via a drop-in API proxy. You can use the official Anthropic SDKs by pointing the `baseURL` to the WhyOps proxy and using your WhyOps API Key.
 
+<CardGroup cols={2}>
+  <Card title="Use the TypeScript SDK" icon="code" href="/integrations/typescript-sdk">
+    Prefer `@whyops/sdk` if you want Anthropic proxy patching plus manual runtime traces from one client.
+  </Card>
+  <Card title="Use the Python SDK" icon="terminal" href="/integrations/python-sdk">
+    Prefer `whyops` if you want the same Anthropic proxy flow with sync and async instrumentation helpers.
+  </Card>
+</CardGroup>
+
 ## Setup
 
 1. **Obtain API Keys**:

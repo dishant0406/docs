@@ -36,10 +36,18 @@
     {
       "group": "Integrations",
       "pages": [
+        "integrations/sdk-packages",
+        "integrations/typescript-sdk",
+        "integrations/typescript-sdk-runtime",
+        "integrations/python-sdk",
+        "integrations/python-sdk-runtime",
+        "integrations/go-sdk",
         "integrations/agent-init",
+        "integrations/agent-init-reference",
         "integrations/openai",
         "integrations/anthropic",
-        "integrations/manual-events"
+        "integrations/manual-events",
+        "integrations/manual-events-reference"
       ]
     },
     {
