@@ -22,8 +22,14 @@ Use this page after the TypeScript quickstart, proxy helpers, and runtime events
 Use hybrid mode when the proxy already captures the model exchange, but you still want application-side tool timing and output.
 
 ```ts
-const openai = whyops.openai(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
-const trace = whyops.trace('checkout-8841');
+const traceId = 'checkout-8841';
+const openai = whyops.openai(new OpenAI({ apiKey: process.env.WHYOPS_API_KEY }));
+openai.defaultHeaders = {
+  ...(openai as any).defaultHeaders,
+  'X-Trace-ID': traceId,
+  'X-Thread-ID': traceId,
+};
+const trace = whyops.trace(traceId);
 
 const spanId = await trace.toolCallRequest('charge_card', [
   { name: 'charge_card', arguments: { amount: 4999, currency: 'usd' } },

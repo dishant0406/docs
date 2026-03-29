@@ -19,6 +19,8 @@ Use the runtime trace builder when you want visibility beyond what the proxy can
 
 ## Minimal trace
 
+Use the exact same `traceId` here that you pass in `X-Trace-ID` on proxied OpenAI or Anthropic calls when you want tool events and model events to stay on the same thread.
+
 <Tabs>
   <Tab title="Prompt + response">
     ```ts
@@ -118,8 +120,14 @@ Use `cacheReadTokens` for tokens served from cache and `cacheCreationTokens` for
 ## Hybrid pattern
 
 ```ts
-const openai = whyops.openai(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
-const trace = whyops.trace('checkout-8841');
+const traceId = 'checkout-8841';
+const openai = whyops.openai(new OpenAI({ apiKey: process.env.WHYOPS_API_KEY }));
+openai.defaultHeaders = {
+  ...(openai as any).defaultHeaders,
+  'X-Trace-ID': traceId,
+  'X-Thread-ID': traceId,
+};
+const trace = whyops.trace(traceId);
 
 const spanId = await trace.toolCallRequest('charge_card', [
   { name: 'charge_card', arguments: { amount: 4999, currency: 'usd' } },

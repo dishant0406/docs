@@ -22,8 +22,14 @@ Use this page after the Python quickstart, proxy helpers, and runtime events are
 <Tabs>
   <Tab title="Sync">
     ```python
-    client = sdk.openai(OpenAI(api_key="YOUR_OPENAI_API_KEY"))
-    trace = sdk.trace("checkout-8841")
+    trace_id = "checkout-8841"
+    client = sdk.openai(OpenAI(api_key="YOUR_WHYOPS_API_KEY"))
+    client.default_headers = {
+        **(client.default_headers or {}),
+        "X-Trace-ID": trace_id,
+        "X-Thread-ID": trace_id,
+    }
+    trace = sdk.trace(trace_id)
 
     span_id = trace.tool_call_request_sync(
         "charge_card",
@@ -42,8 +48,14 @@ Use this page after the Python quickstart, proxy helpers, and runtime events are
   </Tab>
   <Tab title="Async">
     ```python
-    client = sdk.openai(AsyncOpenAI(api_key="YOUR_OPENAI_API_KEY"))
-    trace = sdk.trace("checkout-8841")
+    trace_id = "checkout-8841"
+    client = sdk.openai(AsyncOpenAI(api_key="YOUR_WHYOPS_API_KEY"))
+    client.default_headers = {
+        **(client.default_headers or {}),
+        "X-Trace-ID": trace_id,
+        "X-Thread-ID": trace_id,
+    }
+    trace = sdk.trace(trace_id)
 
     span_id = await trace.tool_call_request(
         "charge_card",

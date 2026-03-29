@@ -25,6 +25,7 @@ The `whyops` package gives Python services one integration surface for agent reg
 | A stable `agent_name` | Keeps proxy traffic and runtime events attached to the same agent identity |
 | `systemPrompt` and tool metadata | Lets WhyOps version the agent and show the correct configuration in the UI |
 | Your provider key in the WhyOps dashboard | Lets WhyOps authenticate upstream when it forwards OpenAI or Anthropic traffic |
+| A stable session or trace ID | Best for explicit continuity between proxied model calls and later tool or runtime events |
 
 <Callout type="info" title="Recommended order">
   In Python, the cleanest flow is: create the WhyOps client, call `init_agent_sync()` or `await init_agent()` during startup, then patch OpenAI or Anthropic, and only after that add manual runtime events.
@@ -101,7 +102,13 @@ You do not have to call this manually because trace methods auto-initialize, but
     ```python
     from openai import OpenAI
 
-    client = sdk.openai(OpenAI(api_key="YOUR_OPENAI_API_KEY"))
+    trace_id = "session-123"
+    client = sdk.openai(OpenAI(api_key="YOUR_WHYOPS_API_KEY"))
+    client.default_headers = {
+        **(client.default_headers or {}),
+        "X-Trace-ID": trace_id,
+        "X-Thread-ID": trace_id,
+    }
 
     completion = client.chat.completions.create(
         model="gpt-4o",
@@ -113,10 +120,16 @@ You do not have to call this manually because trace methods auto-initialize, but
     ```python
     from anthropic import Anthropic
 
-    client = sdk.anthropic(Anthropic(api_key="YOUR_ANTHROPIC_API_KEY"))
+    trace_id = "session-123"
+    client = sdk.anthropic(Anthropic(api_key="YOUR_WHYOPS_API_KEY"))
+    client.default_headers = {
+        **(client.default_headers or {}),
+        "X-Trace-ID": trace_id,
+        "X-Thread-ID": trace_id,
+    }
 
     message = client.messages.create(
-        model="claude-3-5-sonnet-20241022",
+      model="claude-3-5-sonnet-20241022",
         max_tokens=800,
         messages=[{"role": "user", "content": "Summarize this incident."}],
     )
@@ -126,6 +139,10 @@ You do not have to call this manually because trace methods auto-initialize, but
 
 <Callout type="tip" title="Read the proxy page next">
   The helper mutates the provider client in place. Go to [Python SDK Proxy Helpers](/integrations/python-sdk-proxy) for the exact key flow, header behavior, and sync versus async details.
+</Callout>
+
+<Callout type="warning" title="Use explicit trace headers when you care about follow-up tool continuity">
+  The proxy can generate a trace automatically, but the backend checks `X-Trace-ID` and `X-Thread-ID` first. If your app later emits tool or runtime events, reusing the same explicit trace ID is the cleaner and more reliable setup.
 </Callout>
 
 ## 5. Add runtime traces only where you need more visibility

@@ -25,6 +25,7 @@ description: "Start here for @whyops/sdk: install the package, initialize the ag
 | A stable `agentName` | Keeps proxy traffic and runtime events attached to the same agent identity |
 | `systemPrompt` and tool metadata | Lets WhyOps version the agent and show the right configuration in the UI |
 | Your provider key in the WhyOps dashboard | Lets WhyOps authenticate upstream when it forwards OpenAI or Anthropic traffic |
+| A stable session or trace ID | Best for explicit continuity between proxied model calls and later tool or runtime events |
 
 <Callout type="info" title="Recommended order">
   In TypeScript, the cleanest flow is: create the WhyOps client, call `await whyops.initAgent()` during startup, then patch OpenAI or Anthropic, and only after that add manual runtime events.
@@ -105,9 +106,16 @@ You do not have to call this manually because `trace()` auto-initializes on firs
     import OpenAI from 'openai';
     import { whyops } from './whyops';
 
+    const traceId = 'session-123';
     const openai = whyops.openai(
-      new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+      new OpenAI({ apiKey: process.env.WHYOPS_API_KEY }),
     );
+
+    openai.defaultHeaders = {
+      ...(openai as any).defaultHeaders,
+      'X-Trace-ID': traceId,
+      'X-Thread-ID': traceId,
+    };
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -120,9 +128,16 @@ You do not have to call this manually because `trace()` auto-initializes on firs
     import Anthropic from '@anthropic-ai/sdk';
     import { whyops } from './whyops';
 
+    const traceId = 'session-123';
     const anthropic = whyops.anthropic(
-      new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }),
+      new Anthropic({ apiKey: process.env.WHYOPS_API_KEY }),
     );
+
+    anthropic.defaultHeaders = {
+      ...(anthropic as any).defaultHeaders,
+      'X-Trace-ID': traceId,
+      'X-Thread-ID': traceId,
+    };
 
     const message = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
@@ -135,6 +150,10 @@ You do not have to call this manually because `trace()` auto-initializes on firs
 
 <Callout type="tip" title="Read the proxy page next">
   The helper mutates the provider client in place. Go to [TypeScript SDK Proxy Helpers](/integrations/typescript-sdk-proxy) for the exact key flow, header behavior, and OpenAI versus Anthropic details.
+</Callout>
+
+<Callout type="warning" title="Use explicit trace headers when you care about follow-up tool continuity">
+  The proxy can generate a trace automatically, but the backend checks `X-Trace-ID` and `X-Thread-ID` first. If your app later emits tool or runtime events, reusing the same explicit trace ID is the cleaner and more reliable setup.
 </Callout>
 
 ## 5. Add runtime traces only where you need more visibility

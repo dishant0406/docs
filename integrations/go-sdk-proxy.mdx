@@ -23,6 +23,7 @@ The Go SDK does not patch provider clients directly. Instead, it gives you a pro
 |---|---|---|
 | `WHYOPS_API_KEY` | Your app environment | Authenticates agent init, manual events, and the proxy transport talking to WhyOps |
 | Provider credential in the WhyOps dashboard | WhyOps provider settings | Lets WhyOps authenticate upstream when it forwards the proxied request |
+| A stable trace or session ID | Your request context | Best for explicit continuity between proxied model calls and later tool or runtime events |
 
 ## The recommended order
 
@@ -49,9 +50,12 @@ The Go SDK does not patch provider clients directly. Instead, it gives you a pro
 
 ```go
 client := sdk.ProxyHTTPClient()
+traceID := "session-123"
 
 req, _ := http.NewRequest("POST", "https://proxy.whyops.com/v1/chat/completions", bytes.NewBuffer(body))
 req.Header.Set("Content-Type", "application/json")
+req.Header.Set("X-Trace-ID", traceID)
+req.Header.Set("X-Thread-ID", traceID)
 
 resp, err := client.Do(req)
 ```
@@ -75,3 +79,4 @@ resp, err := client.Do(req)
 - Passing `ProxyHTTPClient()` to the provider SDK but forgetting to change the provider base URL to WhyOps.
 - Sending provider requests to the real upstream host and expecting the transport alone to proxy them.
 - Using different `AgentName` values between proxied traffic and runtime events.
+- Relying only on auto-generated trace IDs when later tool or runtime events need to join the same thread.

@@ -22,8 +22,7 @@ This page explains the Python proxy helper flow in the exact order users usually
 | Credential | Where it lives | What it is used for |
 |---|---|---|
 | `WHYOPS_API_KEY` | Your app environment | Authenticates agent init, manual events, and the patched provider client talking to WhyOps |
-| `OPENAI_API_KEY` | Usually your app environment during client creation | Lets you instantiate the OpenAI SDK client before the helper patches it |
-| `ANTHROPIC_API_KEY` | Usually your app environment during client creation | Lets you instantiate the Anthropic SDK client before the helper patches it |
+| `WHYOPS_API_KEY` in the provider client constructor | Your app environment | The simplest constructor value when you are routing through WhyOps and storing the real provider credential in WhyOps |
 | Provider credential in the WhyOps dashboard | WhyOps provider settings | Lets WhyOps authenticate upstream when it forwards the proxied request |
 
 <Callout type="warning" title="The patched client uses WhyOps auth">
@@ -58,8 +57,14 @@ This page explains the Python proxy helper flow in the exact order users usually
     from openai import OpenAI
 
     sdk.init_agent_sync()
+    trace_id = "session-123"
 
-    client = sdk.openai(OpenAI(api_key="YOUR_OPENAI_API_KEY"))
+    client = sdk.openai(OpenAI(api_key="YOUR_WHYOPS_API_KEY"))
+    client.default_headers = {
+        **(client.default_headers or {}),
+        "X-Trace-ID": trace_id,
+        "X-Thread-ID": trace_id,
+    }
 
     completion = client.chat.completions.create(
         model="gpt-4o",
@@ -72,8 +77,14 @@ This page explains the Python proxy helper flow in the exact order users usually
     from openai import AsyncOpenAI
 
     await sdk.init_agent()
+    trace_id = "session-123"
 
-    client = sdk.openai(AsyncOpenAI(api_key="YOUR_OPENAI_API_KEY"))
+    client = sdk.openai(AsyncOpenAI(api_key="YOUR_WHYOPS_API_KEY"))
+    client.default_headers = {
+        **(client.default_headers or {}),
+        "X-Trace-ID": trace_id,
+        "X-Thread-ID": trace_id,
+    }
 
     completion = await client.chat.completions.create(
         model="gpt-4o",
@@ -91,8 +102,14 @@ This page explains the Python proxy helper flow in the exact order users usually
     from anthropic import Anthropic
 
     sdk.init_agent_sync()
+    trace_id = "session-123"
 
-    client = sdk.anthropic(Anthropic(api_key="YOUR_ANTHROPIC_API_KEY"))
+    client = sdk.anthropic(Anthropic(api_key="YOUR_WHYOPS_API_KEY"))
+    client.default_headers = {
+        **(client.default_headers or {}),
+        "X-Trace-ID": trace_id,
+        "X-Thread-ID": trace_id,
+    }
 
     message = client.messages.create(
         model="claude-3-5-sonnet-20241022",
@@ -106,8 +123,14 @@ This page explains the Python proxy helper flow in the exact order users usually
     from anthropic import AsyncAnthropic
 
     await sdk.init_agent()
+    trace_id = "session-123"
 
-    client = sdk.anthropic(AsyncAnthropic(api_key="YOUR_ANTHROPIC_API_KEY"))
+    client = sdk.anthropic(AsyncAnthropic(api_key="YOUR_WHYOPS_API_KEY"))
+    client.default_headers = {
+        **(client.default_headers or {}),
+        "X-Trace-ID": trace_id,
+        "X-Thread-ID": trace_id,
+    }
 
     message = await client.messages.create(
         model="claude-3-5-sonnet-20241022",
@@ -132,9 +155,14 @@ This page explains the Python proxy helper flow in the exact order users usually
 # - default_headers -> x-api-key + X-Agent-Name
 ```
 
+## Why explicit trace headers are recommended
+
+The proxy route checks `X-Trace-ID` and `X-Thread-ID` before it falls back to invisible-signature extraction or auto-generated trace IDs. If your workflow includes later tool execution, manual `trace()` events, or multi-step orchestration, reusing the same explicit trace ID keeps everything on the same thread more reliably.
+
 ## Common mistakes
 
 - Do not change `agent_name` between startup, proxied traffic, and runtime events.
+- Do not rely only on auto-generated trace IDs if your app later emits manual tool or runtime events. Set `X-Trace-ID` yourself and reuse it.
 - Do not keep using the patched client for direct provider traffic; keep a second unpatched client if you need both paths.
 - Do not skip provider configuration in the WhyOps dashboard and assume the constructor key alone is enough for proxied upstream traffic.
 - Do not start with runtime events first if your real goal is proxy instrumentation. Get the proxy path working, then layer runtime events on top.

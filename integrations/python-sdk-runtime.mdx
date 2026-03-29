@@ -19,6 +19,8 @@ Use the trace builder when you want the graph to include application-side runtim
 
 ## Manual events mode
 
+Use the exact same `trace_id` here that you pass in `X-Trace-ID` on proxied OpenAI or Anthropic calls when you want tool events and model events to stay on the same thread.
+
 <Tabs>
   <Tab title="Sync">
     ```python
@@ -114,8 +116,14 @@ Use `cacheReadTokens` and `cacheCreationTokens` when your runtime exposes cache-
 ## Hybrid pattern
 
 ```python
-client = sdk.openai(OpenAI(api_key="YOUR_OPENAI_API_KEY"))
-trace = sdk.trace("checkout-8841")
+trace_id = "checkout-8841"
+client = sdk.openai(OpenAI(api_key="YOUR_WHYOPS_API_KEY"))
+client.default_headers = {
+    **(client.default_headers or {}),
+    "X-Trace-ID": trace_id,
+    "X-Thread-ID": trace_id,
+}
+trace = sdk.trace(trace_id)
 
 span_id = trace.tool_call_request_sync(
     "charge_card",

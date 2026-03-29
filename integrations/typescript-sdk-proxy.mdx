@@ -22,8 +22,7 @@ This page explains the TypeScript proxy helper flow in the exact order users usu
 | Credential | Where it lives | What it is used for |
 |---|---|---|
 | `WHYOPS_API_KEY` | Your app environment | Authenticates agent init, manual events, and the patched provider client talking to WhyOps |
-| `OPENAI_API_KEY` | Usually your app environment during client creation | Lets you instantiate the OpenAI SDK client before the helper patches it |
-| `ANTHROPIC_API_KEY` | Usually your app environment during client creation | Lets you instantiate the Anthropic SDK client before the helper patches it |
+| `WHYOPS_API_KEY` in the provider client constructor | Your app environment | The simplest constructor value when you are routing through WhyOps and storing the real provider credential in WhyOps |
 | Provider credential in the WhyOps dashboard | WhyOps provider settings | Lets WhyOps authenticate upstream when it forwards the proxied request |
 
 <Callout type="warning" title="The patched client uses WhyOps auth">
@@ -57,10 +56,17 @@ import OpenAI from 'openai';
 import { whyops } from './whyops';
 
 await whyops.initAgent();
+const traceId = 'session-123';
 
 const openai = whyops.openai(
-  new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+  new OpenAI({ apiKey: process.env.WHYOPS_API_KEY }),
 );
+
+openai.defaultHeaders = {
+  ...(openai as any).defaultHeaders,
+  'X-Trace-ID': traceId,
+  'X-Thread-ID': traceId,
+};
 
 const response = await openai.chat.completions.create({
   model: 'gpt-4o',
@@ -75,10 +81,17 @@ import Anthropic from '@anthropic-ai/sdk';
 import { whyops } from './whyops';
 
 await whyops.initAgent();
+const traceId = 'session-123';
 
 const anthropic = whyops.anthropic(
-  new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }),
+  new Anthropic({ apiKey: process.env.WHYOPS_API_KEY }),
 );
+
+anthropic.defaultHeaders = {
+  ...(anthropic as any).defaultHeaders,
+  'X-Trace-ID': traceId,
+  'X-Thread-ID': traceId,
+};
 
 const message = await anthropic.messages.create({
   model: 'claude-3-5-sonnet-20241022',
@@ -103,9 +116,14 @@ const message = await anthropic.messages.create({
 // - X-Agent-Name -> your stable agent name
 ```
 
+## Why explicit trace headers are recommended
+
+The proxy route checks `X-Trace-ID` and `X-Thread-ID` before it falls back to invisible-signature extraction or auto-generated trace IDs. If your workflow includes later tool execution, manual `trace()` events, or multi-step orchestration, reusing the same explicit trace ID keeps everything on the same thread more reliably.
+
 ## Common mistakes
 
 - Do not change `agentName` between startup, proxied traffic, and runtime events.
+- Do not rely only on auto-generated trace IDs if your app later emits manual tool or runtime events. Set `X-Trace-ID` yourself and reuse it.
 - Do not keep using the patched client for direct provider traffic; keep a second unpatched client if you need both paths.
 - Do not skip provider configuration in the WhyOps dashboard and assume the constructor key alone is enough for proxied upstream traffic.
 - Do not start with runtime events first if your real goal is proxy instrumentation. Get the proxy path working, then layer runtime events on top.
