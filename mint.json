@@ -34,14 +34,40 @@
       ]
     },
     {
-      "group": "Integrations",
+      "group": "SDK Overview",
       "pages": [
-        "integrations/sdk-packages",
+        "integrations/sdk-packages"
+      ]
+    },
+    {
+      "group": "TypeScript SDK",
+      "pages": [
         "integrations/typescript-sdk",
+        "integrations/typescript-sdk-proxy",
         "integrations/typescript-sdk-runtime",
+        "integrations/typescript-sdk-advanced"
+      ]
+    },
+    {
+      "group": "Python SDK",
+      "pages": [
         "integrations/python-sdk",
+        "integrations/python-sdk-proxy",
         "integrations/python-sdk-runtime",
+        "integrations/python-sdk-advanced"
+      ]
+    },
+    {
+      "group": "Go SDK",
+      "pages": [
         "integrations/go-sdk",
+        "integrations/go-sdk-proxy",
+        "integrations/go-sdk-runtime"
+      ]
+    },
+    {
+      "group": "Direct APIs",
+      "pages": [
         "integrations/agent-init",
         "integrations/agent-init-reference",
         "integrations/openai",

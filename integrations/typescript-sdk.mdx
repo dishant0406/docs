@@ -1,20 +1,36 @@
 ---
-title: "TypeScript SDK"
-description: "Setup guide for @whyops/sdk, including install, client creation, proxy helpers, and deployment configuration."
+title: "TypeScript SDK Quickstart"
+description: "Start here for @whyops/sdk: install the package, initialize the agent, make your first proxied call, and then move into runtime tracing."
 ---
 
-`@whyops/sdk` is the highest-leverage integration for Node.js, Bun, and modern server-side TypeScript apps. It combines agent registration, proxy patching, and manual runtime events behind one client.
+`@whyops/sdk` is the main WhyOps package for Node.js, Bun, and modern server-side TypeScript apps. This page is the basic setup path: install the package, register the agent, then route OpenAI or Anthropic traffic through WhyOps.
 
-<CardGroup cols={2}>
-  <Card title="Runtime Events Guide" icon="diagram-project" href="/integrations/typescript-sdk-runtime">
-    Manual traces, cache-aware usage payloads, tool span patterns, and hybrid instrumentation.
+<CardGroup cols={3}>
+  <Card title="Proxy Helpers" icon="plug" href="/integrations/typescript-sdk-proxy">
+    Read this next if you want the exact API-key flow and what `whyops.openai()` or `whyops.anthropic()` mutates.
   </Card>
-  <Card title="SDK Packages Hub" icon="box-open" href="/integrations/sdk-packages">
-    Compare TypeScript, Python, and Go packages before choosing the integration pattern for each service.
+  <Card title="Runtime Events" icon="diagram-project" href="/integrations/typescript-sdk-runtime">
+    Add tool spans, cache-aware token usage, thinking events, and runtime failures.
+  </Card>
+  <Card title="Advanced Patterns" icon="sliders" href="/integrations/typescript-sdk-advanced">
+    Hybrid tracing, self-hosted overrides, prompt caching, and common mistakes.
   </Card>
 </CardGroup>
 
-## Install
+## Before you start
+
+| You need | Why |
+|---|---|
+| `WHYOPS_API_KEY` | Authenticates agent init, manual events, and proxied model traffic to WhyOps |
+| A stable `agentName` | Keeps proxy traffic and runtime events attached to the same agent identity |
+| `systemPrompt` and tool metadata | Lets WhyOps version the agent and show the right configuration in the UI |
+| Your provider key in the WhyOps dashboard | Lets WhyOps authenticate upstream when it forwards OpenAI or Anthropic traffic |
+
+<Callout type="info" title="Recommended order">
+  In TypeScript, the cleanest flow is: create the WhyOps client, call `await whyops.initAgent()` during startup, then patch OpenAI or Anthropic, and only after that add manual runtime events.
+</Callout>
+
+## 1. Install the package
 
 <Tabs>
   <Tab title="npm">
@@ -39,7 +55,7 @@ description: "Setup guide for @whyops/sdk, including install, client creation, p
   </Tab>
 </Tabs>
 
-## Create the client once
+## 2. Create the WhyOps client once
 
 ```ts
 import { WhyOps } from '@whyops/sdk';
@@ -69,28 +85,22 @@ export const whyops = new WhyOps({
 });
 ```
 
-<Callout type="tip" title="Agent init behavior">
-  `trace()` methods auto-register the agent on first use. Call `await whyops.initAgent()` during boot if you want startup-time validation or deploy-time visibility.
+<Callout type="warning" title="Tool schemas are strings">
+  If you include `inputSchema` or `outputSchema`, pass JSON strings with `JSON.stringify(...)`. If the agent has no tools, set `tools: []` explicitly so the registered definition stays clear.
 </Callout>
 
-## Choose the operating mode
+## 3. Initialize the agent during startup
 
-<Steps>
-  <Step title="Proxy mode">
-    Patch an OpenAI or Anthropic client when you want automatic capture of prompts, responses, tool calls, embeddings, and trace continuity.
-  </Step>
-  <Step title="Manual events mode">
-    Add `trace()` events when you need app-side tool timings, retries, orchestration state, or failures the proxy cannot see.
-  </Step>
-  <Step title="Hybrid mode">
-    Use both together when you want provider traffic from the proxy and richer runtime visibility from your application code.
-  </Step>
-</Steps>
+```ts
+await whyops.initAgent();
+```
 
-## Proxy mode
+You do not have to call this manually because `trace()` auto-initializes on first event, but calling it during boot is the better default because agent registration problems fail early.
+
+## 4. Make your first proxied model call
 
 <Tabs>
-  <Tab title="OpenAI helper">
+  <Tab title="OpenAI">
     ```ts
     import OpenAI from 'openai';
     import { whyops } from './whyops';
@@ -105,7 +115,7 @@ export const whyops = new WhyOps({
     });
     ```
   </Tab>
-  <Tab title="Anthropic helper">
+  <Tab title="Anthropic">
     ```ts
     import Anthropic from '@anthropic-ai/sdk';
     import { whyops } from './whyops';
@@ -121,38 +131,32 @@ export const whyops = new WhyOps({
     });
     ```
   </Tab>
-  <Tab title="What the helper changes">
-    ```ts
-    // whyops.openai(client) mutates the client in place:
-    // - baseURL -> https://proxy.whyops.com
-    // - apiKey -> WHYOPS_API_KEY
-    // - Authorization -> Bearer WHYOPS_API_KEY
-    // - X-Agent-Name -> your stable agent name
-    //
-    // Keep a separate unpatched provider client if you still need direct calls.
-    ```
-  </Tab>
 </Tabs>
 
-## Self-hosted overrides
+<Callout type="tip" title="Read the proxy page next">
+  The helper mutates the provider client in place. Go to [TypeScript SDK Proxy Helpers](/integrations/typescript-sdk-proxy) for the exact key flow, header behavior, and OpenAI versus Anthropic details.
+</Callout>
 
-```ts
-const whyops = new WhyOps({
-  apiKey: process.env.WHYOPS_API_KEY!,
-  agentName: 'customer-support-agent',
-  agentMetadata: { systemPrompt: 'You are helpful.', tools: [] },
-  proxyBaseUrl: 'https://proxy.internal.example.com',
-  analyseBaseUrl: 'https://analyse.internal.example.com/api',
-});
-```
+## 5. Add runtime traces only where you need more visibility
 
-## Runtime instrumentation next
+Start with proxy-only instrumentation first. Add `trace()` events when you need:
 
-<CardGroup cols={2}>
-  <Card title="TypeScript Runtime Events" icon="terminal" href="/integrations/typescript-sdk-runtime">
-    See manual trace calls, tool span pairing, prompt-caching token usage, and hybrid examples.
+- tool execution latency and outputs
+- retries inside your framework
+- runtime failures after the model returns
+- prompt caching-aware usage on manual `llmResponse()` calls
+- exposed thinking blocks or orchestration milestones
+
+## Next pages
+
+<CardGroup cols={3}>
+  <Card title="Proxy Helpers" icon="plug" href="/integrations/typescript-sdk-proxy">
+    Understand which API key goes where and what the helper changes on the provider client.
   </Card>
-  <Card title="Raw Events API" icon="code" href="/integrations/manual-events">
-    Use the REST ingest API directly if you need language-agnostic event submission outside the SDK.
+  <Card title="Runtime Events" icon="terminal" href="/integrations/typescript-sdk-runtime">
+    Add manual event coverage for tool spans, thinking blocks, embeddings, and errors.
+  </Card>
+  <Card title="Advanced Patterns" icon="sliders" href="/integrations/typescript-sdk-advanced">
+    Finish with hybrid tracing, self-hosting, prompt caching, and event IDs.
   </Card>
 </CardGroup>

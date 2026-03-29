@@ -1,0 +1,144 @@
+---
+title: "Python SDK Proxy Helpers"
+description: "Understand the whyops Python proxy helper flow, which API key goes where, and how OpenAI and Anthropic clients are patched."
+---
+
+This page explains the Python proxy helper flow in the exact order users usually get stuck on: which API key belongs where, when to initialize the agent, and what `sdk.openai()` or `sdk.anthropic()` actually changes.
+
+<CardGroup cols={3}>
+  <Card title="Quickstart" icon="box-open" href="/integrations/python-sdk">
+    Start there first if you have not created and initialized the WhyOps client yet.
+  </Card>
+  <Card title="Runtime Events" icon="diagram-project" href="/integrations/python-sdk-runtime">
+    Add runtime tracing after the proxy flow is already working.
+  </Card>
+  <Card title="Advanced Patterns" icon="sliders" href="/integrations/python-sdk-advanced">
+    Move there for hybrid tracing, self-hosting, prompt caching, and common mistakes.
+  </Card>
+</CardGroup>
+
+## Which API key goes where
+
+| Credential | Where it lives | What it is used for |
+|---|---|---|
+| `WHYOPS_API_KEY` | Your app environment | Authenticates agent init, manual events, and the patched provider client talking to WhyOps |
+| `OPENAI_API_KEY` | Usually your app environment during client creation | Lets you instantiate the OpenAI SDK client before the helper patches it |
+| `ANTHROPIC_API_KEY` | Usually your app environment during client creation | Lets you instantiate the Anthropic SDK client before the helper patches it |
+| Provider credential in the WhyOps dashboard | WhyOps provider settings | Lets WhyOps authenticate upstream when it forwards the proxied request |
+
+<Callout type="warning" title="The patched client uses WhyOps auth">
+  After you call `sdk.openai(client)` or `sdk.anthropic(client)`, the SDK mutates the client in place so outgoing traffic authenticates to WhyOps with `WHYOPS_API_KEY` and `X-Agent-Name`.
+</Callout>
+
+## The recommended order
+
+<Steps>
+  <Step title="1. Store the provider credential in WhyOps">
+    Add your OpenAI or Anthropic provider key in the WhyOps dashboard so WhyOps can forward proxied requests upstream.
+  </Step>
+  <Step title="2. Create and initialize the WhyOps client">
+    Build the `WhyOps` instance and call `sdk.init_agent_sync()` or `await sdk.init_agent()` during startup.
+  </Step>
+  <Step title="3. Create the provider SDK client normally">
+    Construct the OpenAI or Anthropic SDK client using the provider library you already use.
+  </Step>
+  <Step title="4. Patch the provider client with WhyOps">
+    Call `sdk.openai(...)` or `sdk.anthropic(...)` immediately after creating the client.
+  </Step>
+  <Step title="5. Send requests as usual">
+    Your app code stays the same after patching. The client now routes through WhyOps.
+  </Step>
+</Steps>
+
+## OpenAI helper
+
+<Tabs>
+  <Tab title="Sync">
+    ```python
+    from openai import OpenAI
+
+    sdk.init_agent_sync()
+
+    client = sdk.openai(OpenAI(api_key="YOUR_OPENAI_API_KEY"))
+
+    completion = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Where is order 123?"}],
+    )
+    ```
+  </Tab>
+  <Tab title="Async">
+    ```python
+    from openai import AsyncOpenAI
+
+    await sdk.init_agent()
+
+    client = sdk.openai(AsyncOpenAI(api_key="YOUR_OPENAI_API_KEY"))
+
+    completion = await client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Where is order 123?"}],
+    )
+    ```
+  </Tab>
+</Tabs>
+
+## Anthropic helper
+
+<Tabs>
+  <Tab title="Sync">
+    ```python
+    from anthropic import Anthropic
+
+    sdk.init_agent_sync()
+
+    client = sdk.anthropic(Anthropic(api_key="YOUR_ANTHROPIC_API_KEY"))
+
+    message = client.messages.create(
+        model="claude-3-5-sonnet-20241022",
+        max_tokens=800,
+        messages=[{"role": "user", "content": "Summarize this incident."}],
+    )
+    ```
+  </Tab>
+  <Tab title="Async">
+    ```python
+    from anthropic import AsyncAnthropic
+
+    await sdk.init_agent()
+
+    client = sdk.anthropic(AsyncAnthropic(api_key="YOUR_ANTHROPIC_API_KEY"))
+
+    message = await client.messages.create(
+        model="claude-3-5-sonnet-20241022",
+        max_tokens=800,
+        messages=[{"role": "user", "content": "Summarize this incident."}],
+    )
+    ```
+  </Tab>
+</Tabs>
+
+## What the helper changes
+
+```python
+# sdk.openai(client) mutates the client in place:
+# - base_url -> the WhyOps proxy base URL from the SDK config
+# - api_key -> WHYOPS_API_KEY
+# - default_headers -> Authorization + X-Agent-Name
+#
+# sdk.anthropic(client) mutates the client in place:
+# - base_url -> the WhyOps proxy base URL from the SDK config
+# - api_key -> WHYOPS_API_KEY
+# - default_headers -> x-api-key + X-Agent-Name
+```
+
+## Common mistakes
+
+- Do not change `agent_name` between startup, proxied traffic, and runtime events.
+- Do not keep using the patched client for direct provider traffic; keep a second unpatched client if you need both paths.
+- Do not skip provider configuration in the WhyOps dashboard and assume the constructor key alone is enough for proxied upstream traffic.
+- Do not start with runtime events first if your real goal is proxy instrumentation. Get the proxy path working, then layer runtime events on top.
+
+## If you are not using the helper
+
+Go to [OpenAI Proxy API](/integrations/openai) or [Anthropic Proxy API](/integrations/anthropic) for direct proxy configuration without the published SDK.

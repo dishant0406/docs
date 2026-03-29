@@ -1,21 +1,53 @@
 ---
 title: "SDK Packages"
-description: "Official WhyOps packages for TypeScript, Python, and Go, including proxy mode, manual events, and self-hosted overrides."
+description: "Start here to choose the right WhyOps package, understand the integration order, and jump into the correct language section."
 ---
 
 WhyOps ships three first-party SDK packages so you can instrument agents without stitching the proxy and events API together manually.
 
 <CardGroup cols={3}>
   <Card title="TypeScript / JavaScript" icon="code" href="/integrations/typescript-sdk">
-    `@whyops/sdk` patches OpenAI and Anthropic clients, auto-initializes agents, and emits manual trace events.
+    Start with the TypeScript quickstart, then move to proxy helpers, runtime events, and advanced patterns.
   </Card>
   <Card title="Python" icon="terminal" href="/integrations/python-sdk">
-    `whyops` supports both sync and async flows, plus direct helpers for OpenAI and Anthropic clients.
+    Start with the Python quickstart, then move to proxy helpers, runtime events, and advanced sync or async patterns.
   </Card>
   <Card title="Go" icon="diagram-project" href="/integrations/go-sdk">
-    The Go module provides a trace builder, agent init, and a proxy-aware `http.Client` transport.
+    Start with the Go quickstart, then move to proxy transport and runtime events.
   </Card>
 </CardGroup>
+
+## The recommended order
+
+<Steps>
+  <Step title="1. Choose your language package">
+    Pick the TypeScript, Python, or Go section in the sidebar based on the service you are instrumenting.
+  </Step>
+  <Step title="2. Create a WhyOps client with stable agent metadata">
+    Define `agentName`, `systemPrompt`, and tool metadata once so WhyOps can version the agent correctly.
+  </Step>
+  <Step title="3. Initialize the agent early">
+    Call `initAgent()`, `init_agent_sync()` or `InitAgent(ctx)` during boot so registration errors surface before runtime traffic.
+  </Step>
+  <Step title="4. Route model calls through the proxy">
+    Use the package proxy helper or transport so your OpenAI or Anthropic traffic goes through WhyOps.
+  </Step>
+  <Step title="5. Add runtime events where the proxy cannot see enough">
+    Use trace events for tool execution, retries, failures, prompt caching-aware usage, and framework orchestration.
+  </Step>
+</Steps>
+
+## Package map
+
+| Capability | TypeScript | Python | Go |
+|---|---:|---:|---:|
+| Hosted defaults for proxy + analyse URLs | Yes | Yes | Yes |
+| Automatic agent init before first event | Yes | Yes | Yes |
+| OpenAI proxy helper | Yes | Yes | Via `ProxyHTTPClient()` |
+| Anthropic proxy helper | Yes | Yes | Via `ProxyHTTPClient()` |
+| Manual runtime events | Yes | Yes | Yes |
+| Prompt caching-aware token fields | Yes | Yes | Yes |
+| Self-hosted URL overrides | Yes | Yes | Yes |
 
 ## Install
 
@@ -37,32 +69,6 @@ WhyOps ships three first-party SDK packages so you can instrument agents without
   </Tab>
 </Tabs>
 
-## What every package covers
-
-| Capability | TypeScript | Python | Go |
-|---|---:|---:|---:|
-| Hosted defaults for proxy + analyse URLs | Yes | Yes | Yes |
-| Automatic agent init before first event | Yes | Yes | Yes |
-| OpenAI proxy helper | Yes | Yes | Via `ProxyHTTPClient()` |
-| Anthropic proxy helper | Yes | Yes | Via `ProxyHTTPClient()` |
-| Manual runtime events | Yes | Yes | Yes |
-| Prompt caching-aware token fields | Yes | Yes | Yes |
-| Self-hosted URL overrides | Yes | Yes | Yes |
-
-## Pick an integration pattern
-
-<Steps>
-  <Step title="Proxy mode">
-    Route OpenAI or Anthropic traffic through `https://proxy.whyops.com` so prompt, completion, tool call, and embedding telemetry are captured automatically.
-  </Step>
-  <Step title="Manual events mode">
-    Use the trace builder when you want tool execution, retries, errors, orchestration milestones, and custom runtime state visible in the graph.
-  </Step>
-  <Step title="Hybrid mode">
-    Proxy the LLM calls and add manual events for everything the proxy cannot see, such as tool latency, framework retries, and app-side failures.
-  </Step>
-</Steps>
-
 ```mermaid
 flowchart LR
   A[Your agent runtime] --> B[WhyOps SDK]
@@ -75,7 +81,7 @@ flowchart LR
   G --> H[WhyOps UI]
 ```
 
-## Hosted defaults
+## Hosted defaults used by the SDKs
 
 All three packages use these defaults when you do not override them:
 
@@ -90,23 +96,16 @@ All three packages use these defaults when you do not override them:
   The SDK event payloads already support `cacheReadTokens` and `cacheCreationTokens` inside usage metadata, so you can report cache-aware token usage when you emit manual `llm_response` events.
 </Callout>
 
-## Common mistakes to avoid
-
-- Do not send your provider API key to the SDK helpers. After patching, the client authenticates to WhyOps with `WHYOPS_API_KEY`, while the upstream provider key stays stored in WhyOps.
-- Keep `agentName` stable across proxy traffic and manual events, or traces will fragment across multiple agent identities.
-- For Go, remember that `ProxyHTTPClient()` injects headers only. Your provider client must still point at the WhyOps proxy host.
-- If you self-host, override `proxyBaseUrl` and `analyseBaseUrl` in the SDK config instead of rewriting URLs in every request.
-
-## Next pages
+## Choose your section in the sidebar
 
 <CardGroup cols={3}>
-  <Card title="TypeScript Guide" icon="code" href="/integrations/typescript-sdk">
-    Full `@whyops/sdk` setup, OpenAI and Anthropic patching, manual event patterns, and self-hosted config.
+  <Card title="TypeScript SDK" icon="code" href="/integrations/typescript-sdk">
+    Best for Node.js, Bun, and modern server-side TypeScript services using OpenAI or Anthropic SDKs.
   </Card>
-  <Card title="Python Guide" icon="terminal" href="/integrations/python-sdk">
-    Sync and async examples, proxy helpers, trace methods, and usage metadata fields.
+  <Card title="Python SDK" icon="terminal" href="/integrations/python-sdk">
+    Best for synchronous APIs, async workers, and Python services that need one package for proxying and runtime traces.
   </Card>
-  <Card title="Go Guide" icon="diagram-project" href="/integrations/go-sdk">
-    Manual event builder, proxy transport usage, and a Go-specific runtime checklist.
+  <Card title="Go SDK" icon="diagram-project" href="/integrations/go-sdk">
+    Best for backend services that want a trace builder plus a proxy-aware `http.Client` transport.
   </Card>
 </CardGroup>

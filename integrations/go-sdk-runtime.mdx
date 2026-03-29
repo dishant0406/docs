@@ -1,0 +1,106 @@
+---
+title: "Go SDK Runtime Events"
+description: "Use the Go trace builder for tool spans, prompt caching-aware token usage, hybrid patterns, self-hosting, and operational detail."
+---
+
+Use the Go trace builder when you want the graph to include application-side runtime work that the provider proxy cannot observe directly.
+
+<CardGroup cols={3}>
+  <Card title="Quickstart" icon="box-open" href="/integrations/go-sdk">
+    Start with client creation, agent initialization, and your first trace event.
+  </Card>
+  <Card title="Proxy Transport" icon="plug" href="/integrations/go-sdk-proxy">
+    Review the Go proxy flow before adding runtime events on top of proxied traffic.
+  </Card>
+  <Card title="Manual Events API" icon="code" href="/integrations/manual-events">
+    Compare the Go helpers with the raw REST ingest endpoint and event schema.
+  </Card>
+</CardGroup>
+
+## Minimal runtime tracing
+
+<Tabs>
+  <Tab title="Tool span pair">
+    ```go
+    spanID, _ := trace.ToolCallRequest(ctx, "search_orders",
+    	[]whyops.ToolCallPair{{Name: "search_orders", Arguments: map[string]any{"orderId": "123"}}},
+    	whyops.ToolCallRequestOptions{LatencyMs: 12},
+    )
+
+    _ = trace.ToolCallResponse(ctx, "search_orders", spanID,
+    	[]whyops.ToolCallPair{{Name: "search_orders", Arguments: map[string]any{"orderId": "123"}}},
+    	map[string]any{"status": "shipped"},
+    	whyops.ToolCallResponseOptions{LatencyMs: 91},
+    )
+    ```
+  </Tab>
+  <Tab title="Thinking block">
+    ```go
+    _ = trace.LLMThinking(ctx, "I should verify the order before replying.", whyops.LLMThinkingOptions{
+    	Signature: "anthropic-thinking-signature",
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Prompt caching-aware usage
+
+```go
+_ = trace.LLMResponse(ctx, "anthropic/claude-sonnet-4-5", "anthropic", "Done.", whyops.LLMResponseOptions{
+	LatencyMs: 860,
+	Usage: &whyops.TokenUsage{
+		PromptTokens:        1200,
+		CompletionTokens:    240,
+		TotalTokens:         9940,
+		CacheReadTokens:     8200,
+		CacheCreationTokens: 300,
+	},
+})
+```
+
+## Hybrid pattern
+
+Use hybrid mode when the proxy already captures the model exchange, but you still want application-side tool timing and output.
+
+```go
+spanID, _ := trace.ToolCallRequest(ctx, "charge_card",
+	[]whyops.ToolCallPair{{Name: "charge_card", Arguments: map[string]any{"amount": 4999, "currency": "usd"}}},
+	whyops.ToolCallRequestOptions{},
+)
+
+result := chargeCard()
+
+_ = trace.ToolCallResponse(ctx, "charge_card", spanID,
+	[]whyops.ToolCallPair{{Name: "charge_card", Arguments: map[string]any{"amount": 4999, "currency": "usd"}}},
+	map[string]any{"result": result},
+	whyops.ToolCallResponseOptions{},
+)
+```
+
+## Self-hosted overrides
+
+```go
+sdk := whyops.New(whyops.Config{
+	APIKey:         os.Getenv("WHYOPS_API_KEY"),
+	AgentName:      "customer-support-agent",
+	AgentMetadata:  whyops.AgentMetadata{SystemPrompt: "You are helpful."},
+	ProxyBaseURL:   "https://proxy.internal.example.com",
+	AnalyseBaseURL: "https://analyse.internal.example.com/api",
+})
+```
+
+## Method map
+
+| Method | Purpose | Notes |
+|---|---|---|
+| `InitAgent(ctx)` | Explicit agent registration | Also runs automatically before first event |
+| `Trace(traceID)` | Create a trace builder | Use one trace per session, request, or workflow |
+| `UserMessage()` | Log user or assembled prompt input | Optional `SystemPrompt`, `Tools`, and `Params` |
+| `LLMResponse()` | Log model output | Supports `Usage`, `FinishReason`, `LatencyMs` |
+| `LLMThinking()` | Log explicit thinking blocks | Use when the runtime exposes reasoning |
+| `EmbeddingRequest()` | Log embedding inputs | Pairs with `EmbeddingResponse()` |
+| `EmbeddingResponse()` | Log embedding result summary | Includes total tokens and latency |
+| `ToolCallRequest()` | Start a tool span | Returns `spanID` |
+| `ToolCallResponse()` | Close the tool span | Reuse the `spanID` from the request |
+| `ToolResult()` | Record tool output returned to the model | Useful in hybrid setups |
+| `Error()` | Record runtime or provider failure | Supports `Status` and `Stack` |

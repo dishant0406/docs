@@ -1,20 +1,36 @@
 ---
-title: "Python SDK"
-description: "Setup guide for the whyops Python package, including install, client creation, proxy helpers, and deployment configuration."
+title: "Python SDK Quickstart"
+description: "Start here for the whyops Python package: install the package, initialize the agent, make your first proxied call, and then move into runtime tracing."
 ---
 
-The `whyops` package is designed for Python services that want one SDK surface for agent registration, OpenAI or Anthropic proxying, and direct runtime event emission.
+The `whyops` package gives Python services one integration surface for agent registration, OpenAI or Anthropic proxying, and direct runtime event emission. This page is the basic setup path.
 
-<CardGroup cols={2}>
-  <Card title="Runtime Events Guide" icon="diagram-project" href="/integrations/python-sdk-runtime">
-    Sync and async trace calls, prompt-caching token usage, tool span patterns, and hybrid instrumentation.
+<CardGroup cols={3}>
+  <Card title="Proxy Helpers" icon="plug" href="/integrations/python-sdk-proxy">
+    Read this next if you want the exact API-key flow and what `sdk.openai()` or `sdk.anthropic()` changes.
   </Card>
-  <Card title="SDK Packages Hub" icon="box-open" href="/integrations/sdk-packages">
-    Compare Python with the TypeScript and Go packages before choosing the right integration pattern.
+  <Card title="Runtime Events" icon="diagram-project" href="/integrations/python-sdk-runtime">
+    Add sync or async trace events for tools, thinking blocks, embeddings, and errors.
+  </Card>
+  <Card title="Advanced Patterns" icon="sliders" href="/integrations/python-sdk-advanced">
+    Hybrid tracing, self-hosted overrides, prompt caching, and common mistakes.
   </Card>
 </CardGroup>
 
-## Install
+## Before you start
+
+| You need | Why |
+|---|---|
+| `WHYOPS_API_KEY` | Authenticates agent init, manual events, and proxied model traffic to WhyOps |
+| A stable `agent_name` | Keeps proxy traffic and runtime events attached to the same agent identity |
+| `systemPrompt` and tool metadata | Lets WhyOps version the agent and show the correct configuration in the UI |
+| Your provider key in the WhyOps dashboard | Lets WhyOps authenticate upstream when it forwards OpenAI or Anthropic traffic |
+
+<Callout type="info" title="Recommended order">
+  In Python, the cleanest flow is: create the WhyOps client, call `init_agent_sync()` or `await init_agent()` during startup, then patch OpenAI or Anthropic, and only after that add manual runtime events.
+</Callout>
+
+## 1. Install the package
 
 <Tabs>
   <Tab title="pip">
@@ -34,7 +50,7 @@ The `whyops` package is designed for Python services that want one SDK surface f
   </Tab>
 </Tabs>
 
-## Create the client once
+## 2. Create the WhyOps client once
 
 ```python
 from whyops import WhyOps
@@ -57,28 +73,31 @@ sdk = WhyOps(
 )
 ```
 
-<Callout type="tip" title="Sync and async are both first-class">
-  `init_agent_sync()` and `*_sync()` trace methods are for synchronous apps. `init_agent()` and async trace methods are for async frameworks and workers.
+<Callout type="warning" title="Tool schemas are strings">
+  If you include `inputSchema` or `outputSchema`, pass JSON strings. If the agent has no tools, set `tools: []` explicitly so the registered definition stays clear.
 </Callout>
 
-## Choose the operating mode
-
-<Steps>
-  <Step title="Proxy mode">
-    Patch an OpenAI or Anthropic client when you want automatic capture of provider requests and responses.
-  </Step>
-  <Step title="Manual events mode">
-    Use `trace()` calls when you need application-side tools, retries, failures, or orchestration steps in the graph.
-  </Step>
-  <Step title="Hybrid mode">
-    Combine the proxy and trace builder when the model traffic and the runtime work both matter for debugging.
-  </Step>
-</Steps>
-
-## Proxy mode
+## 3. Initialize the agent during startup
 
 <Tabs>
-  <Tab title="OpenAI helper">
+  <Tab title="Sync">
+    ```python
+    sdk.init_agent_sync()
+    ```
+  </Tab>
+  <Tab title="Async">
+    ```python
+    await sdk.init_agent()
+    ```
+  </Tab>
+</Tabs>
+
+You do not have to call this manually because trace methods auto-initialize, but early registration is the better default because configuration problems fail before live traffic.
+
+## 4. Make your first proxied model call
+
+<Tabs>
+  <Tab title="OpenAI">
     ```python
     from openai import OpenAI
 
@@ -90,7 +109,7 @@ sdk = WhyOps(
     )
     ```
   </Tab>
-  <Tab title="Anthropic helper">
+  <Tab title="Anthropic">
     ```python
     from anthropic import Anthropic
 
@@ -103,37 +122,32 @@ sdk = WhyOps(
     )
     ```
   </Tab>
-  <Tab title="What the helper changes">
-    ```python
-    # sdk.openai(...) and sdk.anthropic(...) mutate the client in place:
-    # - base_url -> https://proxy.whyops.com
-    # - api_key -> WHYOPS_API_KEY
-    # - default_headers -> WhyOps auth + X-Agent-Name
-    #
-    # Keep a second unpatched provider client if you still need direct traffic.
-    ```
-  </Tab>
 </Tabs>
 
-## Self-hosted overrides
+<Callout type="tip" title="Read the proxy page next">
+  The helper mutates the provider client in place. Go to [Python SDK Proxy Helpers](/integrations/python-sdk-proxy) for the exact key flow, header behavior, and sync versus async details.
+</Callout>
 
-```python
-sdk = WhyOps(
-    api_key="YOUR_WHYOPS_API_KEY",
-    agent_name="customer-support-agent",
-    agent_metadata={"systemPrompt": "You are helpful.", "tools": []},
-    proxy_base_url="https://proxy.internal.example.com",
-    analyse_base_url="https://analyse.internal.example.com/api",
-)
-```
+## 5. Add runtime traces only where you need more visibility
 
-## Runtime instrumentation next
+Start with proxy-only instrumentation first. Add `trace()` events when you need:
 
-<CardGroup cols={2}>
-  <Card title="Python Runtime Events" icon="terminal" href="/integrations/python-sdk-runtime">
-    See sync and async trace patterns, tool pairing, prompt-caching usage, and hybrid examples.
+- tool execution latency and outputs
+- retries inside your framework
+- runtime failures after the model returns
+- prompt caching-aware usage on manual `llm_response()` calls
+- exposed thinking blocks or orchestration milestones
+
+## Next pages
+
+<CardGroup cols={3}>
+  <Card title="Proxy Helpers" icon="plug" href="/integrations/python-sdk-proxy">
+    Understand which API key goes where and what the helper changes on the provider client.
   </Card>
-  <Card title="Raw Events API" icon="code" href="/integrations/manual-events">
-    Use direct REST ingestion if you need language-agnostic or non-SDK event submission.
+  <Card title="Runtime Events" icon="terminal" href="/integrations/python-sdk-runtime">
+    Add manual event coverage for tools, thinking blocks, embeddings, and errors.
+  </Card>
+  <Card title="Advanced Patterns" icon="sliders" href="/integrations/python-sdk-advanced">
+    Finish with hybrid tracing, self-hosting, prompt caching, and event IDs.
   </Card>
 </CardGroup>

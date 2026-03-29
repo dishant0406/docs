@@ -1,0 +1,77 @@
+---
+title: "Go SDK Proxy Transport"
+description: "Use ProxyHTTPClient() correctly, understand the Go key flow, and point provider traffic at the right WhyOps proxy URLs."
+---
+
+The Go SDK does not patch provider clients directly. Instead, it gives you a proxy-aware `*http.Client` transport. This is the page to read when you want OpenAI or Anthropic traffic to go through WhyOps from Go.
+
+<CardGroup cols={3}>
+  <Card title="Quickstart" icon="box-open" href="/integrations/go-sdk">
+    Start there first if you have not created and initialized the WhyOps client yet.
+  </Card>
+  <Card title="Runtime Events" icon="diagram-project" href="/integrations/go-sdk-runtime">
+    Add runtime tracing after the proxy flow is already working.
+  </Card>
+  <Card title="Direct Proxy APIs" icon="code" href="/integrations/openai">
+    Use the direct proxy pages only if you are bypassing the Go package.
+  </Card>
+</CardGroup>
+
+## Which API key goes where
+
+| Credential | Where it lives | What it is used for |
+|---|---|---|
+| `WHYOPS_API_KEY` | Your app environment | Authenticates agent init, manual events, and the proxy transport talking to WhyOps |
+| Provider credential in the WhyOps dashboard | WhyOps provider settings | Lets WhyOps authenticate upstream when it forwards the proxied request |
+
+## The recommended order
+
+<Steps>
+  <Step title="1. Store the provider credential in WhyOps">
+    Add your OpenAI or Anthropic provider key in the WhyOps dashboard so WhyOps can forward proxied requests upstream.
+  </Step>
+  <Step title="2. Create and initialize the WhyOps client">
+    Build the Go `Client` and call `InitAgent(ctx)` during startup.
+  </Step>
+  <Step title="3. Get a proxy-aware http client">
+    Call `sdk.ProxyHTTPClient()` and supply that client anywhere your provider SDK accepts a custom `*http.Client`.
+  </Step>
+  <Step title="4. Point the provider SDK at the WhyOps proxy host">
+    The transport only injects headers. You still have to set the provider base URL to WhyOps.
+  </Step>
+</Steps>
+
+<Callout type="warning" title="Go-specific behavior">
+  `ProxyHTTPClient()` injects WhyOps headers, but it does not rewrite the destination host. Your provider SDK or raw HTTP request must still target the WhyOps proxy URL.
+</Callout>
+
+## Raw HTTP example
+
+```go
+client := sdk.ProxyHTTPClient()
+
+req, _ := http.NewRequest("POST", "https://proxy.whyops.com/v1/chat/completions", bytes.NewBuffer(body))
+req.Header.Set("Content-Type", "application/json")
+
+resp, err := client.Do(req)
+```
+
+## Provider SDK pattern
+
+```go
+// Use sdk.ProxyHTTPClient() anywhere your provider SDK accepts *http.Client.
+//
+// Then point that provider SDK at the WhyOps proxy base URL:
+//   https://proxy.whyops.com        for Anthropic-style endpoints
+//   https://proxy.whyops.com/v1     for OpenAI-style endpoints
+//
+// The exact constructor varies by provider library, but the pattern is:
+//   1. supply ProxyHTTPClient()
+//   2. set the provider base URL to the WhyOps proxy
+```
+
+## Common mistakes
+
+- Passing `ProxyHTTPClient()` to the provider SDK but forgetting to change the provider base URL to WhyOps.
+- Sending provider requests to the real upstream host and expecting the transport alone to proxy them.
+- Using different `AgentName` values between proxied traffic and runtime events.

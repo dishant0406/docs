@@ -1,0 +1,85 @@
+---
+title: "TypeScript SDK Advanced Patterns"
+description: "Hybrid tracing, prompt caching, self-hosting, event IDs, and common operational patterns for @whyops/sdk."
+---
+
+Use this page after the TypeScript quickstart, proxy helpers, and runtime events are already clear.
+
+<CardGroup cols={3}>
+  <Card title="Quickstart" icon="box-open" href="/integrations/typescript-sdk">
+    Install the package, initialize the agent, and make the first proxied model call.
+  </Card>
+  <Card title="Proxy Helpers" icon="plug" href="/integrations/typescript-sdk-proxy">
+    Review the key flow and patched-client behavior.
+  </Card>
+  <Card title="Runtime Events" icon="diagram-project" href="/integrations/typescript-sdk-runtime">
+    Review the event methods before composing hybrid flows.
+  </Card>
+</CardGroup>
+
+## Hybrid tracing
+
+Use hybrid mode when the proxy already captures the model exchange, but you still want application-side tool timing and output.
+
+```ts
+const openai = whyops.openai(new OpenAI({ apiKey: process.env.OPENAI_API_KEY }));
+const trace = whyops.trace('checkout-8841');
+
+const spanId = await trace.toolCallRequest('charge_card', [
+  { name: 'charge_card', arguments: { amount: 4999, currency: 'usd' } },
+]);
+
+const result = await chargeCard();
+
+await trace.toolCallResponse(
+  'charge_card',
+  spanId,
+  [{ name: 'charge_card', arguments: { amount: 4999, currency: 'usd' } }],
+  result,
+);
+```
+
+## Prompt caching-aware usage
+
+```ts
+await trace.llmResponse('anthropic/claude-sonnet-4-5', 'anthropic', 'Done.', {
+  usage: {
+    promptTokens: 1200,
+    completionTokens: 240,
+    totalTokens: 9940,
+    cacheReadTokens: 8200,
+    cacheCreationTokens: 300,
+  },
+  latencyMs: 860,
+});
+```
+
+Use `cacheReadTokens` for tokens served from cache and `cacheCreationTokens` for tokens written into cache when your runtime exposes those values.
+
+## Self-hosted overrides
+
+```ts
+const whyops = new WhyOps({
+  apiKey: process.env.WHYOPS_API_KEY!,
+  agentName: 'customer-support-agent',
+  agentMetadata: { systemPrompt: 'You are helpful.', tools: [] },
+  proxyBaseUrl: 'https://proxy.internal.example.com',
+  analyseBaseUrl: 'https://analyse.internal.example.com/api',
+});
+```
+
+## Event IDs you should understand
+
+| Field | When to set it |
+|---|---|
+| `spanId` | Use the same value across `toolCallRequest()` and `toolCallResponse()` |
+| `stepId` | Set it only if your framework already has stable ordered steps |
+| `parentStepId` | Use it when you want explicit tree structure instead of backend inference |
+| `idempotencyKey` | Set it when retries or queue replay could submit the same event twice |
+
+## Common mistakes
+
+- Calling `trace()` methods without stable `traceId` values across the same workflow.
+- Mixing manual `llmResponse()` events with proxied model responses for the same model turn when you only wanted one representation.
+- Forgetting to reuse `spanId` across tool request and response events.
+- Overriding URLs request-by-request instead of setting `proxyBaseUrl` and `analyseBaseUrl` once on the `WhyOps` client.

@@ -1,0 +1,111 @@
+---
+title: "Python SDK Advanced Patterns"
+description: "Hybrid tracing, prompt caching, self-hosting, sync and async operational patterns, and common pitfalls for the whyops Python package."
+---
+
+Use this page after the Python quickstart, proxy helpers, and runtime events are already clear.
+
+<CardGroup cols={3}>
+  <Card title="Quickstart" icon="box-open" href="/integrations/python-sdk">
+    Install the package, initialize the agent, and make the first proxied model call.
+  </Card>
+  <Card title="Proxy Helpers" icon="plug" href="/integrations/python-sdk-proxy">
+    Review the key flow and patched-client behavior.
+  </Card>
+  <Card title="Runtime Events" icon="diagram-project" href="/integrations/python-sdk-runtime">
+    Review the event methods before composing hybrid flows.
+  </Card>
+</CardGroup>
+
+## Hybrid tracing
+
+<Tabs>
+  <Tab title="Sync">
+    ```python
+    client = sdk.openai(OpenAI(api_key="YOUR_OPENAI_API_KEY"))
+    trace = sdk.trace("checkout-8841")
+
+    span_id = trace.tool_call_request_sync(
+        "charge_card",
+        [{"name": "charge_card", "arguments": {"amount": 4999, "currency": "usd"}}],
+    )
+
+    result = charge_card()
+
+    trace.tool_call_response_sync(
+        "charge_card",
+        span_id,
+        [{"name": "charge_card", "arguments": {"amount": 4999, "currency": "usd"}}],
+        result,
+    )
+    ```
+  </Tab>
+  <Tab title="Async">
+    ```python
+    client = sdk.openai(AsyncOpenAI(api_key="YOUR_OPENAI_API_KEY"))
+    trace = sdk.trace("checkout-8841")
+
+    span_id = await trace.tool_call_request(
+        "charge_card",
+        [{"name": "charge_card", "arguments": {"amount": 4999, "currency": "usd"}}],
+    )
+
+    result = await charge_card()
+
+    await trace.tool_call_response(
+        "charge_card",
+        span_id,
+        [{"name": "charge_card", "arguments": {"amount": 4999, "currency": "usd"}}],
+        result,
+    )
+    ```
+  </Tab>
+</Tabs>
+
+## Prompt caching-aware usage
+
+```python
+await trace.llm_response(
+    "anthropic/claude-sonnet-4-5",
+    "anthropic",
+    "Done.",
+    usage={
+        "promptTokens": 1200,
+        "completionTokens": 240,
+        "totalTokens": 9940,
+        "cacheReadTokens": 8200,
+        "cacheCreationTokens": 300,
+    },
+    latency_ms=860,
+)
+```
+
+Use `cacheReadTokens` for tokens served from cache and `cacheCreationTokens` for tokens written into cache when your runtime exposes those values.
+
+## Self-hosted overrides
+
+```python
+sdk = WhyOps(
+    api_key="YOUR_WHYOPS_API_KEY",
+    agent_name="customer-support-agent",
+    agent_metadata={"systemPrompt": "You are helpful.", "tools": []},
+    proxy_base_url="https://proxy.internal.example.com",
+    analyse_base_url="https://analyse.internal.example.com/api",
+)
+```
+
+## Event IDs you should understand
+
+| Field | When to set it |
+|---|---|
+| `span_id` | Use the same value across `tool_call_request()` and `tool_call_response()` |
+| `step_id` | Set it only if your framework already has stable ordered steps |
+| `parent_step_id` | Use it when you want explicit tree structure instead of backend inference |
+| `idempotency_key` | Set it when retries or queue replay could submit the same event twice |
+
+## Common mistakes
+
+- Calling `trace()` methods without stable `trace_id` values across the same workflow.
+- Mixing manual `llm_response()` events with proxied model responses for the same model turn when you only wanted one representation.
+- Forgetting to reuse `span_id` across tool request and response events.
+- Overriding URLs request-by-request instead of setting `proxy_base_url` and `analyse_base_url` once on the `WhyOps` client.
