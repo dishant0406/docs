@@ -1,0 +1,187 @@
+---
+title: "Vercel AI SDK"
+description: "Use @whyops/vercel-ai-sdk with @whyops/sdk to capture generateText, streamText, tool calls, reasoning, and embeddings."
+---
+
+`@whyops/vercel-ai-sdk` is the companion integration for apps built on the Vercel AI SDK. It sits on top of `@whyops/sdk` and automatically traces `generateText`, `streamText`, `embed`, and `embedMany`.
+
+<CardGroup cols={3}>
+  <Card title="SDK Packages" icon="box-open" href="/integrations/sdk-packages">
+    Start here if you are choosing between the language SDKs and companion integrations.
+  </Card>
+  <Card title="TypeScript SDK" icon="code" href="/integrations/typescript-sdk">
+    Create and initialize the base WhyOps client first, then come back here to wrap Vercel AI SDK calls.
+  </Card>
+  <Card title="Runtime Events" icon="diagram-project" href="/integrations/typescript-sdk-runtime">
+    Add manual runtime events only when your app needs coverage beyond what the wrapper captures automatically.
+  </Card>
+</CardGroup>
+
+## What this package captures
+
+When you wrap a Vercel AI SDK call with WhyOps, it captures:
+
+- `user_message`
+- `llm_response`
+- `llm_thinking` when readable reasoning text is exposed
+- `tool_call_request`
+- `tool_call_response`
+- `error`
+- `embedding_request`
+- `embedding_response`
+
+<Callout type="info" title="Package layering">
+  `@whyops/vercel-ai-sdk` does not replace `@whyops/sdk`. You still create the `WhyOps` client with `@whyops/sdk`, then register that client once and wrap your Vercel AI SDK calls with this package.
+</Callout>
+
+## Install
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npm install @whyops/sdk @whyops/vercel-ai-sdk ai
+    npm install @ai-sdk/openai
+    ```
+  </Tab>
+  <Tab title="pnpm">
+    ```bash
+    pnpm add @whyops/sdk @whyops/vercel-ai-sdk ai
+    pnpm add @ai-sdk/openai
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add @whyops/sdk @whyops/vercel-ai-sdk ai
+    yarn add @ai-sdk/openai
+    ```
+  </Tab>
+  <Tab title="bun">
+    ```bash
+    bun add @whyops/sdk @whyops/vercel-ai-sdk ai
+    bun add @ai-sdk/openai
+    ```
+  </Tab>
+</Tabs>
+
+This package supports `ai >= 5.0.0`.
+
+## 1. Create and register the WhyOps client
+
+```ts
+import { WhyOps } from '@whyops/sdk';
+import { registerWhyOps } from '@whyops/vercel-ai-sdk';
+
+const whyops = new WhyOps({
+  apiKey: process.env.WHYOPS_API_KEY!,
+  agentName: 'support-agent',
+  agentMetadata: {
+    systemPrompt: 'You are a helpful support agent.',
+    tools: [],
+  },
+});
+
+await whyops.initAgent();
+registerWhyOps(whyops);
+```
+
+Call `registerWhyOps()` once during startup. After that, you wrap each Vercel AI SDK call with `withWhyOps(...)`.
+
+## 2. Wrap `generateText()`
+
+```ts
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { withWhyOps } from '@whyops/vercel-ai-sdk';
+
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+});
+
+const result = await generateText(withWhyOps({
+  model: openai.chat('gpt-4.1'),
+  system: 'Reply briefly.',
+  prompt: 'What is the capital of France?',
+}));
+
+console.log(result.text);
+```
+
+## 3. Capture multi-step tool calls
+
+`withWhyOps()` captures tool loops automatically. On `ai@5`, it also normalizes `maxSteps` into `stopWhen` so multi-step execution continues correctly.
+
+```ts
+import { generateText, tool } from 'ai';
+import { z } from 'zod';
+
+const result = await generateText(withWhyOps({
+  model: openai.chat('gpt-4.1'),
+  system: 'Use tools when needed.',
+  prompt: 'What is the weather in Madrid and what is 11 * 11?',
+  maxSteps: 5,
+  tools: {
+    get_weather: tool({
+      description: 'Get weather for a city',
+      inputSchema: z.object({ city: z.string() }),
+      execute: async ({ city }) => ({ city, temp: 22, condition: 'clear' }),
+    }),
+    calculate: tool({
+      description: 'Calculate an expression',
+      inputSchema: z.object({ expression: z.string() }),
+      execute: async ({ expression }) => ({ result: eval(expression) }),
+    }),
+  },
+}));
+```
+
+## 4. Wrap `streamText()`
+
+```ts
+import { streamText } from 'ai';
+
+const result = streamText(withWhyOps({
+  model: openai.chat('gpt-4.1'),
+  prompt: 'Name three oceans.',
+}));
+
+for await (const chunk of result.textStream) {
+  process.stdout.write(chunk);
+}
+```
+
+## 5. Use the re-exported embedding helpers
+
+If you want embedding traces, import `embed()` and `embedMany()` from `@whyops/vercel-ai-sdk` instead of directly from `ai`.
+
+```ts
+import { embed, embedMany } from '@whyops/vercel-ai-sdk';
+
+const one = await embed({
+  model: embeddingModel,
+  value: 'hello world',
+});
+
+const many = await embedMany({
+  model: embeddingModel,
+  values: ['alpha', 'beta'],
+});
+```
+
+## Provider notes
+
+- OpenAI-compatible providers that expose nonstandard reasoning fields such as `reasoning_content` are normalized before WhyOps captures the step.
+- If a provider reports reasoning token usage but does not expose readable reasoning text, WhyOps does not synthesize a fake `llm_thinking` event.
+- This package is designed for server-side TypeScript runtimes where you already use `@whyops/sdk`.
+
+## API surface
+
+| Export | Purpose |
+|---|---|
+| `registerWhyOps(whyops)` | Stores the shared WhyOps client for later wrapped calls |
+| `withWhyOps(options)` | Wraps `generateText()` and `streamText()` options |
+| `embed(options)` | Drop-in embedding helper with WhyOps tracing |
+| `embedMany(options)` | Drop-in batch embedding helper with WhyOps tracing |
+
+## Next step
+
+If you have not created the base client yet, go to [TypeScript SDK Quickstart](/integrations/typescript-sdk). If your Vercel AI SDK app also has queue workers, tool orchestration, or downstream API steps outside the wrapper, add [TypeScript SDK Runtime Events](/integrations/typescript-sdk-runtime) on top.

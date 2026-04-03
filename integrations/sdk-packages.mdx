@@ -1,11 +1,11 @@
 ---
 title: "SDK Packages"
-description: "Start here to choose the right WhyOps package, understand the integration order, and jump into the correct language section."
+description: "Start here to choose the right WhyOps package, understand the integration order, and jump into the correct language or companion integration."
 ---
 
-WhyOps ships three first-party SDK packages so you can instrument agents without stitching the proxy and events API together manually.
+WhyOps ships three primary language SDKs plus a companion Vercel AI SDK integration package, so you can instrument agents without stitching the proxy and events API together manually.
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
   <Card title="TypeScript / JavaScript" icon="code" href="/integrations/typescript-sdk">
     Start with the TypeScript quickstart, then move to proxy helpers, runtime events, and advanced patterns.
   </Card>
@@ -15,13 +15,16 @@ WhyOps ships three first-party SDK packages so you can instrument agents without
   <Card title="Go" icon="diagram-project" href="/integrations/go-sdk">
     Start with the Go quickstart, then move to proxy transport and runtime events.
   </Card>
+  <Card title="Vercel AI SDK" icon="sparkles" href="/integrations/vercel-ai-sdk">
+    Use this companion package when your TypeScript app is built on `ai` and you want wrapper-based traces for text generation, tools, streaming, and embeddings.
+  </Card>
 </CardGroup>
 
 ## The recommended order
 
 <Steps>
   <Step title="1. Choose your language package">
-    Pick the TypeScript, Python, or Go section in the sidebar based on the service you are instrumenting.
+    Pick the TypeScript, Python, or Go section in the sidebar based on the service you are instrumenting. If the app uses the Vercel AI SDK, add the companion package after the TypeScript client is in place.
   </Step>
   <Step title="2. Create a WhyOps client with stable agent metadata">
     Define `agentName`, `systemPrompt`, and tool metadata once so WhyOps can version the agent correctly.
@@ -37,7 +40,7 @@ WhyOps ships three first-party SDK packages so you can instrument agents without
   </Step>
 </Steps>
 
-## Package map
+## Primary language SDKs
 
 | Capability | TypeScript | Python | Go |
 |---|---:|---:|---:|
@@ -49,12 +52,23 @@ WhyOps ships three first-party SDK packages so you can instrument agents without
 | Prompt caching-aware token fields | Yes | Yes | Yes |
 | Self-hosted URL overrides | Yes | Yes | Yes |
 
+## Companion package
+
+| Package | Requires | Best for | Captures |
+|---|---|---|---|
+| `@whyops/vercel-ai-sdk` | `@whyops/sdk` | Server-side TypeScript apps built on `ai` | `generateText`, `streamText`, multi-step tool calls, `embed`, `embedMany` |
+
 ## Install
 
 <Tabs>
   <Tab title="npm">
     ```bash
     npm install @whyops/sdk
+    ```
+  </Tab>
+  <Tab title="Vercel AI SDK">
+    ```bash
+    npm install @whyops/sdk @whyops/vercel-ai-sdk ai
     ```
   </Tab>
   <Tab title="PyPI">
@@ -98,7 +112,7 @@ All three packages use these defaults when you do not override them:
 
 ## Choose your section in the sidebar
 
-<CardGroup cols={3}>
+<CardGroup cols={2}>
   <Card title="TypeScript SDK" icon="code" href="/integrations/typescript-sdk">
     Best for Node.js, Bun, and modern server-side TypeScript services using OpenAI or Anthropic SDKs.
   </Card>
@@ -107,5 +121,8 @@ All three packages use these defaults when you do not override them:
   </Card>
   <Card title="Go SDK" icon="diagram-project" href="/integrations/go-sdk">
     Best for backend services that want a trace builder plus a proxy-aware `http.Client` transport.
+  </Card>
+  <Card title="Vercel AI SDK" icon="sparkles" href="/integrations/vercel-ai-sdk">
+    Best for TypeScript services using the Vercel AI SDK that want automatic capture around text generation, tools, reasoning, streaming, and embeddings.
   </Card>
 </CardGroup>

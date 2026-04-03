@@ -49,6 +49,12 @@
       ]
     },
     {
+      "group": "Vercel AI SDK",
+      "pages": [
+        "integrations/vercel-ai-sdk"
+      ]
+    },
+    {
       "group": "Python SDK",
       "pages": [
         "integrations/python-sdk",

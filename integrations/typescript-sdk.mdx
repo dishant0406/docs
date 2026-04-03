@@ -5,6 +5,10 @@ description: "Start here for @whyops/sdk: install the package, initialize the ag
 
 `@whyops/sdk` is the main WhyOps package for Node.js, Bun, and modern server-side TypeScript apps. This page is the basic setup path: install the package, register the agent, then route OpenAI or Anthropic traffic through WhyOps.
 
+<Callout type="info" title="Using the Vercel AI SDK?">
+  Start with this page to create the base `WhyOps` client, then use the companion wrapper on the [Vercel AI SDK integration page](/integrations/vercel-ai-sdk).
+</Callout>
+
 <CardGroup cols={3}>
   <Card title="Proxy Helpers" icon="plug" href="/integrations/typescript-sdk-proxy">
     Read this next if you want the exact API-key flow and what `whyops.openai()` or `whyops.anthropic()` mutates.
@@ -14,6 +18,9 @@ description: "Start here for @whyops/sdk: install the package, initialize the ag
   </Card>
   <Card title="Advanced Patterns" icon="sliders" href="/integrations/typescript-sdk-advanced">
     Hybrid tracing, self-hosted overrides, prompt caching, and common mistakes.
+  </Card>
+  <Card title="Vercel AI SDK" icon="sparkles" href="/integrations/vercel-ai-sdk">
+    Wrap `generateText()`, `streamText()`, and embedding helpers when your app uses `ai`.
   </Card>
 </CardGroup>
 
