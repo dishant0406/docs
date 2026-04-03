@@ -44,6 +44,16 @@ X-Project-Id: <uuid>
 X-Environment-Id: <uuid>
 ```
 
+### Optional headers
+
+You can optionally send `X-External-User-Id` to link traces to your application's user entities:
+
+```http
+X-External-User-Id: user_12345
+```
+
+This is useful when you want to associate traces with your own user IDs without exposing WhyOps internal user IDs.
+
 ## The ingestion pipeline
 
 ```mermaid
@@ -148,6 +158,7 @@ Every event you send must conform to this schema:
 | `content` | `any` | No | The actual payload (e.g., messages, tool outputs). |
 | `metadata` | `object` | No | Additional context (e.g., latency, tokens, model used). |
 | `idempotencyKey` | `string`| No | Prevents duplicate event ingestion. |
+| `externalUserId` | `string`| No | Your application user ID to link traces to end-user entities. |
 
 ## How step and span resolution works
 

@@ -95,7 +95,7 @@ sdk := whyops.New(whyops.Config{
 |---|---|---|
 | `InitAgent(ctx)` | Explicit agent registration | Also runs automatically before first event |
 | `Trace(traceID)` | Create a trace builder | Use one trace per session, request, or workflow |
-| `UserMessage()` | Log user or assembled prompt input | Optional `SystemPrompt`, `Tools`, and `Params` |
+| `UserMessage()` | Log user or assembled prompt input | Optional `SystemPrompt`, `Tools`, `Params`, and `ExternalUserID` |
 | `LLMResponse()` | Log model output | Supports `Usage`, `FinishReason`, `LatencyMs` |
 | `LLMThinking()` | Log explicit thinking blocks | Use when the runtime exposes reasoning |
 | `EmbeddingRequest()` | Log embedding inputs | Pairs with `EmbeddingResponse()` |
@@ -104,3 +104,15 @@ sdk := whyops.New(whyops.Config{
 | `ToolCallResponse()` | Close the tool span | Reuse the `spanID` from the request |
 | `ToolResult()` | Record tool output returned to the model | Useful in hybrid setups |
 | `Error()` | Record runtime or provider failure | Supports `Status` and `Stack` |
+
+## Linking events to users
+
+Use `ExternalUserID` to associate events with your application user IDs:
+
+```go
+_ = trace.UserMessage(ctx, []whyops.MessageItem{{Role: "user", Content: "Reset my password."}},
+	whyops.UserMessageOptions{EventOptions: whyops.EventOptions{ExternalUserID: "user_12345"}},
+)
+```
+
+The `ExternalUserID` is stored on every event and trace, allowing you to filter and analyze traces by your own user identifiers.

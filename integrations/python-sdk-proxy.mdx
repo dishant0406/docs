@@ -64,6 +64,7 @@ This page explains the Python proxy helper flow in the exact order users usually
         **(client.default_headers or {}),
         "X-Trace-ID": trace_id,
         "X-Thread-ID": trace_id,
+        "X-External-User-Id": current_user.id,
     }
 
     completion = client.chat.completions.create(
@@ -84,6 +85,7 @@ This page explains the Python proxy helper flow in the exact order users usually
         **(client.default_headers or {}),
         "X-Trace-ID": trace_id,
         "X-Thread-ID": trace_id,
+        "X-External-User-Id": current_user.id,
     }
 
     completion = await client.chat.completions.create(
@@ -93,6 +95,19 @@ This page explains the Python proxy helper flow in the exact order users usually
     ```
   </Tab>
 </Tabs>
+
+### Linking requests to users
+
+To associate proxied requests with your application user IDs, add the `X-External-User-Id` header:
+
+```python
+client.default_headers = {
+    **(client.default_headers or {}),
+    "X-Trace-ID": trace_id,
+    "X-Thread-ID": trace_id,
+    "X-External-User-Id": current_user.id,
+}
+```
 
 ## Anthropic helper
 

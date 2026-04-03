@@ -26,9 +26,10 @@ Use the exact same `trace_id` here that you pass in `X-Trace-ID` on proxied Open
     ```python
     trace = sdk.trace("session-123")
 
-    trace.user_message_sync([
-        {"role": "user", "content": "Reset my password."}
-    ])
+    trace.user_message_sync(
+        [{"role": "user", "content": "Reset my password."}],
+        external_user_id="user_12345",
+    )
 
     span_id = trace.tool_call_request_sync(
         "search_orders",
@@ -58,9 +59,10 @@ Use the exact same `trace_id` here that you pass in `X-Trace-ID` on proxied Open
     ```python
     trace = sdk.trace("session-123")
 
-    await trace.user_message([
-        {"role": "user", "content": "Reset my password."}
-    ])
+    await trace.user_message(
+        [{"role": "user", "content": "Reset my password."}],
+        external_user_id="user_12345",
+    )
 
     span_id = await trace.tool_call_request(
         "search_orders",
@@ -78,6 +80,19 @@ Use the exact same `trace_id` here that you pass in `X-Trace-ID` on proxied Open
     ```
   </Tab>
 </Tabs>
+
+## Linking events to users
+
+Use `external_user_id` to associate events with your application user IDs:
+
+```python
+trace.user_message_sync(
+    [{"role": "user", "content": "Reset my password."}],
+    external_user_id="user_12345",
+)
+```
+
+The `external_user_id` is stored on every event and trace, allowing you to filter and analyze traces by your own user identifiers.
 
 ## Prompt caching usage
 

@@ -51,6 +51,19 @@ Use the exact same `traceId` here that you pass in `X-Trace-ID` on proxied OpenA
   </Tab>
 </Tabs>
 
+## Linking events to users
+
+Use `externalUserId` to associate events with your application's user IDs:
+
+```ts
+await trace.userMessage(
+  [{ role: 'user', content: 'Reset my password.' }],
+  { externalUserId: 'user_12345' },
+);
+```
+
+The `externalUserId` is stored on every event and trace, allowing you to filter and analyze traces by your own user identifiers.
+
 ## Tool spans
 
 <Tabs>
@@ -107,7 +120,7 @@ Use `cacheReadTokens` for tokens served from cache and `cacheCreationTokens` for
 
 | Method | Purpose | Key options |
 |---|---|---|
-| `userMessage()` | Log assembled chat input | `metadata.systemPrompt`, `metadata.tools`, `spanId`, `stepId` |
+| `userMessage()` | Log assembled chat input | `metadata.systemPrompt`, `metadata.tools`, `spanId`, `stepId`, `externalUserId` |
 | `llmResponse()` | Log model output or tool calls | `toolCalls`, `finishReason`, `usage`, `latencyMs` |
 | `llmThinking()` | Log exposed thinking blocks | `signature` |
 | `embeddingRequest()` | Log embedding inputs | `spanId`, `stepId` |
@@ -116,6 +129,8 @@ Use `cacheReadTokens` for tokens served from cache and `cacheCreationTokens` for
 | `toolCallResponse()` | Close the tool call span | `respondedAt`, `latencyMs` |
 | `toolResult()` | Record tool output returned to the model | `spanId`, `stepId` |
 | `error()` | Record runtime or provider failures | `status`, `stack` |
+
+All methods accept `externalUserId` as an optional parameter to link the event to your application user.
 
 ## Hybrid pattern
 

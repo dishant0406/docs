@@ -74,6 +74,19 @@ const response = await openai.chat.completions.create({
 });
 ```
 
+### Linking requests to users
+
+To associate proxied requests with your application user IDs, add the `X-External-User-Id` header:
+
+```ts
+openai.defaultHeaders = {
+  ...(openai as any).defaultHeaders,
+  'X-Trace-ID': traceId,
+  'X-Thread-ID': traceId,
+  'X-External-User-Id': currentUser.id,
+};
+```
+
 ## Anthropic helper
 
 ```ts
