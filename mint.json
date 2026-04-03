@@ -55,6 +55,12 @@
       ]
     },
     {
+      "group": "LangChain JS (Beta)",
+      "pages": [
+        "integrations/langchain-js"
+      ]
+    },
+    {
       "group": "Python SDK",
       "pages": [
         "integrations/python-sdk",

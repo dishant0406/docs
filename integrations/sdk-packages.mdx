@@ -3,7 +3,7 @@ title: "SDK Packages"
 description: "Start here to choose the right WhyOps package, understand the integration order, and jump into the correct language or companion integration."
 ---
 
-WhyOps ships three primary language SDKs plus a companion Vercel AI SDK integration package, so you can instrument agents without stitching the proxy and events API together manually.
+WhyOps ships three primary language SDKs plus companion integration packages for Vercel AI SDK and LangChain.js, so you can instrument agents without stitching the proxy and events API together manually.
 
 <CardGroup cols={2}>
   <Card title="TypeScript / JavaScript" icon="code" href="/integrations/typescript-sdk">
@@ -17,6 +17,9 @@ WhyOps ships three primary language SDKs plus a companion Vercel AI SDK integrat
   </Card>
   <Card title="Vercel AI SDK" icon="sparkles" href="/integrations/vercel-ai-sdk">
     Use this companion package when your TypeScript app is built on `ai` and you want wrapper-based traces for text generation, tools, streaming, and embeddings.
+  </Card>
+  <Card title="LangChain JS (Beta)" icon="link" href="/integrations/langchain-js">
+    Use this companion package when your TypeScript app is built on LangChain.js and you want automatic traces for any chain, agent, or tool.
   </Card>
 </CardGroup>
 
@@ -52,11 +55,12 @@ WhyOps ships three primary language SDKs plus a companion Vercel AI SDK integrat
 | Prompt caching-aware token fields | Yes | Yes | Yes |
 | Self-hosted URL overrides | Yes | Yes | Yes |
 
-## Companion package
+## Companion packages
 
 | Package | Requires | Best for | Captures |
 |---|---|---|---|
 | `@whyops/vercel-ai-sdk` | `@whyops/sdk` | Server-side TypeScript apps built on `ai` | `generateText`, `streamText`, multi-step tool calls, `embed`, `embedMany` |
+| `@whyops/langchain-js` *(Beta)* | `@whyops/sdk` | TypeScript apps built on LangChain.js | Any chain, agent, LLM call, and tool execution via the LangChain callback system |
 
 ## Install
 
@@ -69,6 +73,11 @@ WhyOps ships three primary language SDKs plus a companion Vercel AI SDK integrat
   <Tab title="Vercel AI SDK">
     ```bash
     npm install @whyops/sdk @whyops/vercel-ai-sdk ai
+    ```
+  </Tab>
+  <Tab title="LangChain JS">
+    ```bash
+    npm install @whyops/sdk @whyops/langchain-js @langchain/core
     ```
   </Tab>
   <Tab title="PyPI">
@@ -124,5 +133,8 @@ All three packages use these defaults when you do not override them:
   </Card>
   <Card title="Vercel AI SDK" icon="sparkles" href="/integrations/vercel-ai-sdk">
     Best for TypeScript services using the Vercel AI SDK that want automatic capture around text generation, tools, reasoning, streaming, and embeddings.
+  </Card>
+  <Card title="LangChain JS (Beta)" icon="link" href="/integrations/langchain-js">
+    Best for TypeScript services using LangChain.js that want automatic capture across any chain, agent loop, or tool via the LangChain callback system.
   </Card>
 </CardGroup>

@@ -1,0 +1,232 @@
+---
+title: "LangChain JS (Beta)"
+description: "Use @whyops/langchain-js to capture LLM calls, tool executions, and errors automatically across any LangChain.js agent or chain."
+---
+
+`@whyops/langchain-js` is the WhyOps integration for LangChain.js. It plugs into LangChain's native callback system via a single tracer class, so you get full observability across any model provider, chain, or agent without changing your application logic.
+
+<Callout type="info" title="Beta">
+  This package is in beta. The core API is stable but provider coverage and event mapping will expand. Please open an issue if you encounter a provider or pattern not yet handled.
+</Callout>
+
+<CardGroup cols={2}>
+  <Card title="TypeScript SDK" icon="code" href="/integrations/typescript-sdk">
+    Create and initialize the base WhyOps client first, then come back here to add the LangChain tracer.
+  </Card>
+  <Card title="Runtime Events" icon="diagram-project" href="/integrations/typescript-sdk-runtime">
+    Add manual runtime events when your app has steps outside LangChain that also need tracing.
+  </Card>
+</CardGroup>
+
+## What this package captures
+
+When you pass `WhyOpsLangChainTracer` in the `callbacks` array on any LangChain invocation, it captures:
+
+- `user_message` — the initial human input (only on the first turn, not on tool-result continuation rounds)
+- `llm_response` — model output, token usage, tool call declarations, finish reason, and latency
+- `tool_call_request` — start of each tool execution with arguments
+- `tool_call_response` — result of each tool execution with latency, paired to its request by span ID
+- `error` — LLM errors, tool errors, and chain errors
+
+<Callout type="info" title="Package layering">
+  `@whyops/langchain-js` does not replace `@whyops/sdk`. You still create the `WhyOps` client with `@whyops/sdk`, then pass it to the tracer. The tracer sends events to WhyOps on every LangChain callback.
+</Callout>
+
+## Install
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npm install @whyops/sdk @whyops/langchain-js @langchain/core
+    ```
+  </Tab>
+  <Tab title="pnpm">
+    ```bash
+    pnpm add @whyops/sdk @whyops/langchain-js @langchain/core
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add @whyops/sdk @whyops/langchain-js @langchain/core
+    ```
+  </Tab>
+  <Tab title="bun">
+    ```bash
+    bun add @whyops/sdk @whyops/langchain-js @langchain/core
+    ```
+  </Tab>
+</Tabs>
+
+Install the LangChain provider package you use as well:
+
+```bash
+npm install @langchain/openai       # OpenAI / Azure OpenAI
+npm install @langchain/anthropic    # Anthropic
+npm install @langchain/google-genai # Google
+```
+
+This package requires `@langchain/core >= 0.3.0`.
+
+## 1. Create the WhyOps client and tracer
+
+```ts
+import { WhyOps } from '@whyops/sdk';
+import { WhyOpsLangChainTracer } from '@whyops/langchain-js';
+
+const whyops = new WhyOps({
+  apiKey: process.env.WHYOPS_API_KEY!,
+  agentName: 'support-agent',
+  agentMetadata: {
+    systemPrompt: 'You are a helpful support agent.',
+    tools: [],
+  },
+});
+
+await whyops.initAgent();
+
+const tracer = new WhyOpsLangChainTracer({ whyops });
+```
+
+Call `initAgent()` once during startup. After that, create a tracer instance and pass it into any LangChain call via `{ callbacks: [tracer] }`.
+
+## 2. Wrap any LangChain call
+
+```ts
+import { ChatOpenAI } from '@langchain/openai';
+import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+
+const llm = new ChatOpenAI({ model: 'gpt-4o' });
+
+const response = await llm.invoke(
+  [
+    new SystemMessage('You are a concise assistant.'),
+    new HumanMessage('What makes LangChain useful for AI agents?'),
+  ],
+  { callbacks: [tracer] },
+);
+
+console.log(response.content);
+```
+
+`callbacks` is accepted by every LangChain primitive — `ChatModel.invoke`, `chain.invoke`, `agent.invoke`, `tool.invoke`, and so on. The tracer receives all events from the invocation and any nested calls.
+
+## Optional tracer options
+
+```ts
+const tracer = new WhyOpsLangChainTracer({
+  whyops,
+  traceId: 'session-abc-123',   // optional — stable session ID
+  externalUserId: 'user_456',   // optional — your application's user ID
+});
+```
+
+`traceId` is optional. If omitted, WhyOps uses the root LangChain run ID. Pass an explicit value when you want this trace to share a thread with other events emitted via `whyops.trace()` outside LangChain.
+
+`externalUserId` is attached to every event so you can filter traces by user in the WhyOps dashboard.
+
+## 3. Agent loops with tool calls
+
+Pass the tracer on both the LLM invocation and each tool invocation so WhyOps sees the full execution:
+
+```ts
+import { tool } from '@langchain/core/tools';
+import { ToolMessage } from '@langchain/core/messages';
+import { z } from 'zod';
+
+const getWeather = tool(
+  async ({ city }) => `${city}: 22°C, sunny`,
+  {
+    name: 'get_weather',
+    description: 'Get current weather for a city.',
+    schema: z.object({ city: z.string() }),
+  },
+);
+
+const llmWithTools = llm.bindTools([getWeather]);
+const toolMap = { get_weather: getWeather };
+
+const messages = [new HumanMessage('What is the weather in London?')];
+
+while (true) {
+  const response = await llmWithTools.invoke(messages, { callbacks: [tracer] });
+  messages.push(response);
+
+  const toolCalls = response.tool_calls ?? [];
+  if (toolCalls.length === 0) break;
+
+  for (const tc of toolCalls) {
+    const result = await toolMap[tc.name].invoke(tc.args, { callbacks: [tracer] });
+    messages.push(new ToolMessage({ content: result, tool_call_id: tc.id ?? '' }));
+  }
+}
+```
+
+WhyOps emits `tool_call_request` when a tool starts and `tool_call_response` when it completes. The two events are paired by a shared span ID so they appear as a single tool span in the trace inspector.
+
+<Callout type="tip" title="Parallel tool calls">
+  When the model requests multiple tools in one step, the tracer awaits each `tool_call_request` before sending `tool_call_response` — guaranteeing correct ordering in the trace even when tools run concurrently.
+</Callout>
+
+## 4. Multi-turn conversations
+
+Reuse the same tracer instance with a stable `traceId` across turns to group all events on one thread:
+
+```ts
+const tracer = new WhyOpsLangChainTracer({
+  whyops,
+  traceId: `session-${userId}`,
+  externalUserId: userId,
+});
+
+// Turn 1
+await llm.invoke([new HumanMessage('Hello')], { callbacks: [tracer] });
+
+// Turn 2 — same tracer, same traceId, events on the same thread
+await llm.invoke([new HumanMessage('Follow-up question')], { callbacks: [tracer] });
+```
+
+## Provider notes
+
+Provider name and model ID are extracted automatically from LangChain's serialized component metadata. Supported providers:
+
+| LangChain class | Provider string |
+|---|---|
+| `ChatOpenAI` / `OpenAI` | `openai` |
+| `AzureChatOpenAI` | `azure_openai` |
+| `ChatAnthropic` / `Anthropic` | `anthropic` |
+| `ChatGoogleGenerativeAI` / `ChatVertexAI` | `google` |
+| `ChatMistralAI` | `mistral` |
+| `ChatOllama` / `OllamaLLM` | `ollama` |
+| `ChatBedrock` / `BedrockChat` | `bedrock` |
+| `ChatCohere` | `cohere` |
+| `ChatGroq` | `groq` |
+| `ChatFireworks` | `fireworks` |
+| `ChatTogether` | `together` |
+| Any other class | `unknown` |
+
+Token usage is read from `llmOutput.tokenUsage` (OpenAI style) first, then from `usage_metadata` on the response message (standardized LangChain format, which includes prompt cache read and creation tokens when available).
+
+## API surface
+
+| Export | Purpose |
+|---|---|
+| `WhyOpsLangChainTracer` | Main tracer class — extend `BaseTracer` from `@langchain/core` |
+| `WhyOpsLangChainTracerOptions` | Constructor options type |
+
+```ts
+new WhyOpsLangChainTracer(options: WhyOpsLangChainTracerOptions)
+```
+
+```ts
+interface WhyOpsLangChainTracerOptions {
+  whyops: WhyOps;          // WhyOps client instance from @whyops/sdk
+  traceId?: string;        // Optional stable session / thread ID
+  externalUserId?: string; // Optional application user ID
+}
+```
+
+Pass the tracer in `{ callbacks: [tracer] }` on any LangChain call. Events are sent in the background and never block your application. All network failures are logged with a `[whyops]` prefix and swallowed.
+
+## Next step
+
+If you have not created the base client yet, start at the [TypeScript SDK Quickstart](/integrations/typescript-sdk). If your app also has queue workers, tool orchestration, or downstream API steps outside LangChain, add [TypeScript SDK Runtime Events](/integrations/typescript-sdk-runtime) on top.
