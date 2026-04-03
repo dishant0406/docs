@@ -35,7 +35,6 @@ When you wrap a Vercel AI SDK call with WhyOps, it captures:
 </Callout>
 
 ## Install
-
 <Tabs>
   <Tab title="npm">
     ```bash
@@ -66,7 +65,6 @@ When you wrap a Vercel AI SDK call with WhyOps, it captures:
 This package supports `ai >= 5.0.0`.
 
 ## 1. Create and register the WhyOps client
-
 ```ts
 import { WhyOps } from '@whyops/sdk';
 import { registerWhyOps } from '@whyops/vercel-ai-sdk';
@@ -87,7 +85,6 @@ registerWhyOps(whyops);
 Call `registerWhyOps()` once during startup. After that, you wrap each Vercel AI SDK call with `withWhyOps(...)`.
 
 ## 2. Wrap `generateText()`
-
 ```ts
 import { generateText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -106,6 +103,22 @@ const result = await generateText(withWhyOps({
 console.log(result.text);
 ```
 
+## Optional `whyopsCtx`
+
+Pass a reusable `whyopsCtx` object as the second argument only when you want request-scoped linkage such as your own user ID or a caller-supplied trace ID:
+
+```ts
+const whyopsCtx = {
+  externalUserId: session.user.id,
+};
+
+const result = await generateText(withWhyOps({
+  model: openai.chat('gpt-4.1'),
+  prompt: 'Summarize this support thread.',
+}, whyopsCtx));
+```
+
+`whyopsCtx` is optional. If you do not pass it, the wrapper keeps generating a trace automatically and does not add `externalUserId`.
 ## 3. Capture multi-step tool calls
 
 `withWhyOps()` captures tool loops automatically. On `ai@5`, it also normalizes `maxSteps` into `stopWhen` so multi-step execution continues correctly.
@@ -135,14 +148,13 @@ const result = await generateText(withWhyOps({
 ```
 
 ## 4. Wrap `streamText()`
-
 ```ts
 import { streamText } from 'ai';
 
 const result = streamText(withWhyOps({
   model: openai.chat('gpt-4.1'),
   prompt: 'Name three oceans.',
-}));
+}, whyopsCtx));
 
 for await (const chunk of result.textStream) {
   process.stdout.write(chunk);
@@ -159,16 +171,15 @@ import { embed, embedMany } from '@whyops/vercel-ai-sdk';
 const one = await embed({
   model: embeddingModel,
   value: 'hello world',
-});
+}, whyopsCtx);
 
 const many = await embedMany({
   model: embeddingModel,
   values: ['alpha', 'beta'],
-});
+}, whyopsCtx);
 ```
 
 ## Provider notes
-
 - OpenAI-compatible providers that expose nonstandard reasoning fields such as `reasoning_content` are normalized before WhyOps captures the step.
 - If a provider reports reasoning token usage but does not expose readable reasoning text, WhyOps does not synthesize a fake `llm_thinking` event.
 - This package is designed for server-side TypeScript runtimes where you already use `@whyops/sdk`.
@@ -178,9 +189,11 @@ const many = await embedMany({
 | Export | Purpose |
 |---|---|
 | `registerWhyOps(whyops)` | Stores the shared WhyOps client for later wrapped calls |
-| `withWhyOps(options)` | Wraps `generateText()` and `streamText()` options |
-| `embed(options)` | Drop-in embedding helper with WhyOps tracing |
-| `embedMany(options)` | Drop-in batch embedding helper with WhyOps tracing |
+| `withWhyOps(options, whyopsCtx?)` | Wraps `generateText()` and `streamText()` options |
+| `embed(options, whyopsCtx?)` | Drop-in embedding helper with WhyOps tracing |
+| `embedMany(options, whyopsCtx?)` | Drop-in batch embedding helper with WhyOps tracing |
+
+`whyopsCtx` currently supports `externalUserId?: string` and `traceId?: string`.
 
 ## Next step
 
